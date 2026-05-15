@@ -32,32 +32,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
   const authRequestIdRef = useRef(0);
+  const resolvedUserIdRef = useRef<string | null>(null);
+  const loginRoleSeedRef = useRef<{ userId: string; roles: AppRole[] } | null>(null);
 
-  const fetchRoles = async (userId: string): Promise<AppRole[]> => {
+  const fetchRoles = async (userId: string): Promise<AppRole[] | null> => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId);
+
+      if (error) return null;
+
       return (data?.map(r => r.role as AppRole)) || [];
     } catch {
-      return [];
+      return null;
     }
   };
 
   useEffect(() => {
     let mounted = true;
-    const initialSessionRequestId = ++authRequestIdRef.current;
 
     const resetAuthState = () => {
       if (!mounted) return;
+      authRequestIdRef.current += 1;
+      resolvedUserIdRef.current = null;
+      loginRoleSeedRef.current = null;
       setSession(null);
       setUser(null);
       setRoles([]);
       setLoading(false);
     };
 
-    const applySessionState = async (event: string, sess: Session | null, requestId: number) => {
+    const applySessionState = async (event: string, sess: Session | null) => {
+      const requestId = ++authRequestIdRef.current;
+
       if (!mounted) return;
 
       setSession(sess);
@@ -69,7 +78,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (event === 'TOKEN_REFRESHED') {
+      const sameUser = resolvedUserIdRef.current === sess.user.id;
+      const seededRoles = loginRoleSeedRef.current?.userId === sess.user.id
+        ? loginRoleSeedRef.current.roles
+        : null;
+
+      if (seededRoles) {
+        setRoles(seededRoles);
+        resolvedUserIdRef.current = sess.user.id;
+        loginRoleSeedRef.current = null;
+        setLoading(false);
+        return;
+      }
+
+      if (event === 'TOKEN_REFRESHED' && sameUser) {
         setLoading(false);
         return;
       }
@@ -77,11 +99,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userRoles = await fetchRoles(sess.user.id);
       if (!mounted || authRequestIdRef.current !== requestId) return;
 
-      setRoles(userRoles);
+      if (userRoles) {
+        setRoles(userRoles);
+        resolvedUserIdRef.current = sess.user.id;
+      } else if (!sameUser) {
+        setRoles([]);
+        resolvedUserIdRef.current = sess.user.id;
+      }
+
       setLoading(false);
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, sess) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
       if (!mounted) return;
       
       if (event === 'SIGNED_OUT') {
@@ -90,13 +119,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-        const requestId = ++authRequestIdRef.current;
-        void applySessionState(event, sess, requestId);
+        void applySessionState(event, sess);
       }
     });
 
     supabase.auth.getSession().then(async ({ data: { session: sess }, error }) => {
-      if (!mounted || authRequestIdRef.current !== initialSessionRequestId) return;
+      if (!mounted) return;
 
       const authError = error as { code?: string; message?: string } | null;
       const isMissingRefreshToken = authError?.code === 'refresh_token_not_found'
@@ -109,17 +137,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         return;
       }
-    });
 
-    const timeout = setTimeout(() => {
-      if (mounted && loading) {
-        setLoading(false);
-      }
-    }, 5000);
+      void applySessionState('INITIAL_SESSION', sess);
+    });
 
     return () => {
       mounted = false;
-      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -127,6 +150,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (password: string): Promise<{ error?: string }> => {
     try {
       authRequestIdRef.current += 1;
+      resolvedUserIdRef.current = null;
+      loginRoleSeedRef.current = null;
       setLoading(true);
       setRoles([]);
 
@@ -148,12 +173,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: data.error || 'خطأ في تسجيل الدخول' };
       }
       
-      if (data.session) {
+      if (data.session && data.user) {
         await supabase.auth.signOut({ scope: 'local' });
-        await supabase.auth.setSession({
+
+        loginRoleSeedRef.current = {
+          userId: data.user.id,
+          roles: Array.isArray(data.roles) ? data.roles as AppRole[] : [],
+        };
+
+        const { error: sessionError } = await supabase.auth.setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
         });
+
+        if (sessionError) {
+          loginRoleSeedRef.current = null;
+          setLoading(false);
+          return { error: 'تعذر تثبيت جلسة تسجيل الدخول' };
+        }
       } else {
         setLoading(false);
       }
@@ -165,9 +202,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    setRoles([]);
-    setSession(null);
-    setUser(null);
+    authRequestIdRef.current += 1;
+    resolvedUserIdRef.current = null;
+    loginRoleSeedRef.current = null;
     await supabase.auth.signOut();
   };
 
