@@ -31,8 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
-  const initializedRef = useRef(false);
-  const skipNextRoleFetch = useRef(false);
+  const authRequestIdRef = useRef(0);
 
   const fetchRoles = async (userId: string): Promise<AppRole[]> => {
     try {
@@ -49,57 +48,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, sess) => {
+    const resetAuthState = () => {
       if (!mounted) return;
-      
-      if (event === 'SIGNED_OUT') {
-        setSession(null);
-        setUser(null);
+      setSession(null);
+      setUser(null);
+      setRoles([]);
+      setLoading(false);
+    };
+
+    const applySessionState = async (event: string, sess: Session | null, requestId: number) => {
+      if (!mounted) return;
+
+      setSession(sess);
+      setUser(sess?.user ?? null);
+
+      if (!sess?.user) {
         setRoles([]);
         setLoading(false);
         return;
       }
 
-      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-        setSession(sess);
-        setUser(sess?.user ?? null);
+      if (event === 'TOKEN_REFRESHED') {
+        setLoading(false);
+        return;
+      }
 
-        if (sess?.user) {
-          // Only fetch roles on initial sign-in / session load, not on token refresh.
-          // Refetching on every TOKEN_REFRESHED can cause cascading state changes.
-          if (event === 'TOKEN_REFRESHED') {
-            setLoading(false);
-            return;
-          }
-          if (skipNextRoleFetch.current) {
-            skipNextRoleFetch.current = false;
-            setLoading(false);
-            return;
-          }
-          setTimeout(async () => {
-            if (!mounted) return;
-            const userRoles = await fetchRoles(sess.user.id);
-            if (mounted) {
-              setRoles(userRoles);
-              setLoading(false);
-            }
-          }, 0);
-        } else {
-          setRoles([]);
-          setLoading(false);
-        }
+      const userRoles = await fetchRoles(sess.user.id);
+      if (!mounted || authRequestIdRef.current !== requestId) return;
+
+      setRoles(userRoles);
+      setLoading(false);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, sess) => {
+      if (!mounted) return;
+      
+      if (event === 'SIGNED_OUT') {
+        resetAuthState();
+        return;
+      }
+
+      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        const requestId = ++authRequestIdRef.current;
+        void applySessionState(event, sess, requestId);
       }
     });
 
     supabase.auth.getSession().then(async ({ data: { session: sess }, error }) => {
-      if (!mounted) return;
+      const initRequestId = authRequestIdRef.current;
+      if (!mounted || authRequestIdRef.current !== initRequestId) return;
+
+      const authError = error as { code?: string; message?: string } | null;
+      const isMissingRefreshToken = authError?.code === 'refresh_token_not_found'
+        || authError?.message?.includes('Refresh Token Not Found');
+
       if (error || !sess) {
-        setSession(null);
-        setUser(null);
-        setRoles([]);
-        setLoading(false);
-        if (error) {
-          await supabase.auth.signOut();
+        resetAuthState();
+        if (isMissingRefreshToken) {
+          await supabase.auth.signOut({ scope: 'local' });
         }
         return;
       }
@@ -120,6 +126,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (password: string): Promise<{ error?: string }> => {
     try {
+      setLoading(true);
+      setRoles([]);
+
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const res = await fetch(
         `https://${projectId}.supabase.co/functions/v1/auth-login`,
@@ -133,20 +142,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       );
       const data = await res.json();
-      if (!res.ok) return { error: data.error || 'خطأ في تسجيل الدخول' };
+      if (!res.ok) {
+        setLoading(false);
+        return { error: data.error || 'خطأ في تسجيل الدخول' };
+      }
       
       if (data.session) {
-        const userRoles = (data.roles || []) as AppRole[];
-        setRoles(userRoles);
-        skipNextRoleFetch.current = true;
-        
+        await supabase.auth.signOut({ scope: 'local' });
         await supabase.auth.setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
         });
+      } else {
+        setLoading(false);
       }
       return {};
     } catch {
+      setLoading(false);
       return { error: 'خطأ في الاتصال بالخادم' };
     }
   };
