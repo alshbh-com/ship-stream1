@@ -15,13 +15,13 @@ function getGuideKey(pathname: string): string | null {
 }
 
 export default function AppLayout() {
-  const { isCourier, isOwnerOrAdmin, isOffice, loading, session } = useAuth();
+  const { isCourier, isOwnerOrAdmin, isOffice, loading, rolesResolved, session } = useAuth();
   const { canView, canEdit } = usePermissions();
   const location = useLocation();
 
   // Wait until auth + roles are fully loaded before deciding any redirect.
   // Otherwise a refresh can briefly show empty roles and cause a wrong redirect.
-  if (loading) {
+  if (loading || (session && !rolesResolved)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
