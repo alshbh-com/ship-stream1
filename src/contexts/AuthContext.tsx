@@ -65,6 +65,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(sess?.user ?? null);
 
         if (sess?.user) {
+          // Only fetch roles on initial sign-in / session load, not on token refresh.
+          // Refetching on every TOKEN_REFRESHED can cause cascading state changes.
+          if (event === 'TOKEN_REFRESHED') {
+            setLoading(false);
+            return;
+          }
           if (skipNextRoleFetch.current) {
             skipNextRoleFetch.current = false;
             setLoading(false);
