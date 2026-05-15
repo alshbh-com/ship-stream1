@@ -9,6 +9,7 @@ interface AuthState {
   user: User | null;
   roles: AppRole[];
   loading: boolean;
+  rolesResolved: boolean;
   isOwner: boolean;
   isAdmin: boolean;
   isCourier: boolean;
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rolesResolved, setRolesResolved] = useState(false);
   const authRequestIdRef = useRef(0);
   const resolvedUserIdRef = useRef<string | null>(null);
   const loginRoleSeedRef = useRef<{ userId: string; roles: AppRole[] } | null>(null);
@@ -61,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       setUser(null);
       setRoles([]);
+      setRolesResolved(true);
       setLoading(false);
     };
 
@@ -74,9 +77,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!sess?.user) {
         setRoles([]);
+        setRolesResolved(true);
         setLoading(false);
         return;
       }
+
+      setRolesResolved(false);
 
       const sameUser = resolvedUserIdRef.current === sess.user.id;
       const seededRoles = loginRoleSeedRef.current?.userId === sess.user.id
@@ -87,11 +93,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRoles(seededRoles);
         resolvedUserIdRef.current = sess.user.id;
         loginRoleSeedRef.current = null;
+        setRolesResolved(true);
         setLoading(false);
         return;
       }
 
       if (event === 'TOKEN_REFRESHED' && sameUser) {
+        setRolesResolved(true);
         setLoading(false);
         return;
       }
@@ -102,9 +110,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (userRoles) {
         setRoles(userRoles);
         resolvedUserIdRef.current = sess.user.id;
+        setRolesResolved(true);
       } else if (!sameUser) {
-        setRoles([]);
-        resolvedUserIdRef.current = sess.user.id;
+        setRolesResolved(false);
       }
 
       setLoading(false);
@@ -154,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loginRoleSeedRef.current = null;
       setLoading(true);
       setRoles([]);
+      setRolesResolved(false);
 
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const res = await fetch(
@@ -216,7 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      session, user, roles, loading,
+      session, user, roles, loading, rolesResolved,
       isOwner, isAdmin, isCourier, isOffice, isOwnerOrAdmin,
       login, logout,
     }}>
