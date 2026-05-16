@@ -330,8 +330,8 @@ export default function OfficeAccounts() {
         'المكتب': getOfficeName(o.office_id),
         'السعر': displayTotal,
         'الشحن': Number(o.delivery_price || 0),
-        'عمولة المندوب': courierRate,
-        'عمولة المكتب': officeRate,
+        'مواصلات المندوب': courierRate,
+        'مرتجع المكتب': officeRate,
         'الصافي': getOrderOfficeDue(o),
         'الحالة': statusName(o.status_id),
         'المندوب': getCourierName(o.courier_id),
@@ -352,8 +352,8 @@ export default function OfficeAccounts() {
       'المكتب': '',
       'السعر': totalDisplay,
       'الشحن': filteredOrders.reduce((s, o) => s + Number(o.delivery_price || 0), 0),
-      'عمولة المندوب': courierRate * filteredOrders.length,
-      'عمولة المكتب': officeRate * filteredOrders.length,
+      'مواصلات المندوب': courierRate * filteredOrders.length,
+      'مرتجع المكتب': officeRate * filteredOrders.length,
       'الصافي': filteredOrders.reduce((s, o) => s + getOrderOfficeDue(o), 0),
       'الحالة': '',
       'المندوب': '',
@@ -549,7 +549,7 @@ export default function OfficeAccounts() {
                 </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">عمولة المندوب (لكل أوردر)</Label>
+                <Label className="text-xs">مواصلات المندوب (لكل أوردر)</Label>
                 <Input
                   type="number"
                   value={courierCommissionRate}
@@ -559,7 +559,7 @@ export default function OfficeAccounts() {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">عمولة المكتب (لكل أوردر)</Label>
+                <Label className="text-xs">مرتجع المكتب (لكل أوردر)</Label>
                 <Input
                   type="number"
                   value={officeCommissionRate}
@@ -695,8 +695,8 @@ export default function OfficeAccounts() {
                      <TableHead className="text-right">المكتب</TableHead>
                      <TableHead className="text-right">الإجمالي</TableHead>
                      <TableHead className="text-right">الشحن</TableHead>
-                     <TableHead className="text-right">عمولة المندوب</TableHead>
-                     <TableHead className="text-right">عمولة المكتب</TableHead>
+                     <TableHead className="text-right">مواصلات المندوب</TableHead>
+                     <TableHead className="text-right">مرتجع المكتب</TableHead>
                      <TableHead className="text-right">الصافي</TableHead>
                      <TableHead className="text-right">الحالة</TableHead>
                      <TableHead className="text-right">المندوب</TableHead>
