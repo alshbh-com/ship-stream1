@@ -729,7 +729,7 @@ export default function OfficeAccounts() {
                         </TableCell>
                         <TableCell className="text-sm">{shipping} ج.م</TableCell>
                         <TableCell className="text-sm text-amber-500 font-bold">{courierRate} ج.م</TableCell>
-                        <TableCell className="text-sm text-blue-500 font-bold">{officeRate} ج.م</TableCell>
+                        <TableCell className="text-sm text-blue-500 font-bold text-center">{status?.name === 'مرتجع' ? '✓' : '-'}</TableCell>
                         <TableCell className="text-sm font-bold text-primary">{net} ج.م</TableCell>
                         <TableCell>
                           {status ? <Badge style={{ backgroundColor: status.color }} className="text-xs">{status.name}</Badge> : '-'}
