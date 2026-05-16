@@ -96,12 +96,13 @@ export default function CourierCollections() {
   const eligibleOrders = orders.filter(o => commissionStatuses.includes(o.status_id));
   const commissionTotal = eligibleOrders.length * rate;
 
-  const officeCommissionBonuses = bonuses.filter(b => b.reason?.startsWith('__office_commission__'));
-  const totalOfficeCommission = officeCommissionBonuses.reduce((sum, b) => sum + Number(b.amount), 0);
+  // مرتجع = عداد فقط (عدد الأوردرات اللي حالتها "مرتجع")
+  const returnsCount = orders.filter(o => o.order_statuses?.name === 'مرتجع').length;
   const regularBonuses = bonuses.filter(b => !b.reason?.startsWith('__office_commission__'));
   const totalRegularBonuses = regularBonuses.reduce((sum, b) => sum + Number(b.amount), 0);
 
-  const netDue = totalCollection + totalOfficeCommission - commissionTotal - totalRegularBonuses;
+  // المرتجع لا يؤثر على الحساب — مجرد إحصائية
+  const netDue = totalCollection - commissionTotal - totalRegularBonuses;
 
   const toggleStatus = (statusId: string) => {
     setCommissionStatuses(prev => prev.includes(statusId) ? prev.filter(s => s !== statusId) : [...prev, statusId]);
