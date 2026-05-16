@@ -549,7 +549,7 @@ export default function OfficeAccounts() {
                 </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">عمولة المندوب (لكل أوردر)</Label>
+                <Label className="text-xs">مواصلات المندوب (لكل أوردر)</Label>
                 <Input
                   type="number"
                   value={courierCommissionRate}
@@ -559,7 +559,7 @@ export default function OfficeAccounts() {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">عمولة المكتب (لكل أوردر)</Label>
+                <Label className="text-xs">مرتجع المكتب (لكل أوردر)</Label>
                 <Input
                   type="number"
                   value={officeCommissionRate}
