@@ -331,7 +331,7 @@ export default function OfficeAccounts() {
         'السعر': displayTotal,
         'الشحن': Number(o.delivery_price || 0),
         'مواصلات المندوب': courierRate,
-        'مرتجع المكتب': officeRate,
+        'مرتجع': st?.name === 'مرتجع' ? '✓' : '',
         'الصافي': getOrderOfficeDue(o),
         'الحالة': statusName(o.status_id),
         'المندوب': getCourierName(o.courier_id),
@@ -343,6 +343,8 @@ export default function OfficeAccounts() {
       return s + (st?.name === 'تسليم جزئي' ? Math.max(0, Number(o.partial_amount || 0) - Number(o.delivery_price || 0)) : Number(o.price || 0));
     }, 0);
 
+    const returnsCount = filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length;
+
     data.push({
       '#': '' as any,
       'الباركود': '',
@@ -353,7 +355,7 @@ export default function OfficeAccounts() {
       'السعر': totalDisplay,
       'الشحن': filteredOrders.reduce((s, o) => s + Number(o.delivery_price || 0), 0),
       'مواصلات المندوب': courierRate * filteredOrders.length,
-      'مرتجع المكتب': officeRate * filteredOrders.length,
+      'مرتجع': `${returnsCount} أوردر` as any,
       'الصافي': filteredOrders.reduce((s, o) => s + getOrderOfficeDue(o), 0),
       'الحالة': '',
       'المندوب': '',
@@ -384,7 +386,7 @@ export default function OfficeAccounts() {
         <td>${displayTotal}${isPartial ? ` <small>(من ${Number(o.price || 0)})</small>` : ''}</td>
         <td>${Number(o.delivery_price || 0)}</td>
         <td>${courierRate}</td>
-        <td>${officeRate}</td>
+        <td style="text-align:center">${statusName(o.status_id) === 'مرتجع' ? '✓' : '-'}</td>
         <td>${getOrderOfficeDue(o)}</td>
         <td>${statusName(o.status_id)}</td>
         <td>${getCourierName(o.courier_id)}</td>
@@ -414,7 +416,7 @@ export default function OfficeAccounts() {
     <div class="sub-header">${format(new Date(), 'dd/MM/yyyy')}</div>
     
     <table>
-      <thead><tr><th>#</th><th>الباركود</th><th>العميل</th><th>الهاتف</th><th>الإجمالي</th><th>الشحن</th><th>عمولة المندوب</th><th>عمولة المكتب</th><th>الصافي</th><th>الحالة</th><th>المندوب</th></tr></thead>
+      <thead><tr><th>#</th><th>الباركود</th><th>العميل</th><th>الهاتف</th><th>الإجمالي</th><th>الشحن</th><th>مواصلات المندوب</th><th>مرتجع</th><th>الصافي</th><th>الحالة</th><th>المندوب</th></tr></thead>
       <tbody>
         ${orderRows}
         <tr class="total-row">
@@ -422,7 +424,7 @@ export default function OfficeAccounts() {
           <td>${totalPrice}</td>
           <td>${totalShipping}</td>
           <td>${courierRate * filteredOrders.length}</td>
-          <td>${officeRate * filteredOrders.length}</td>
+          <td style="text-align:center">${filteredOrders.filter(o => statusName(o.status_id) === 'مرتجع').length} أوردر</td>
           <td>${totalNet}</td>
           <td colspan="2"></td>
         </tr>
@@ -559,14 +561,10 @@ export default function OfficeAccounts() {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">مرتجع المكتب (لكل أوردر)</Label>
-                <Input
-                  type="number"
-                  value={officeCommissionRate}
-                  onChange={e => setOfficeCommissionRate(e.target.value)}
-                  className="w-32 bg-secondary border-border"
-                  placeholder="0"
-                />
+                <Label className="text-xs">عدد المرتجعات</Label>
+                <div className="w-32 h-10 px-3 flex items-center bg-secondary border border-border rounded-md text-sm font-bold text-blue-500">
+                  {filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length} أوردر
+                </div>
               </div>
             </div>
           </CardContent>
@@ -733,7 +731,7 @@ export default function OfficeAccounts() {
                         </TableCell>
                         <TableCell className="text-sm">{shipping} ج.م</TableCell>
                         <TableCell className="text-sm text-amber-500 font-bold">{courierRate} ج.م</TableCell>
-                        <TableCell className="text-sm text-blue-500 font-bold">{officeRate} ج.م</TableCell>
+                        <TableCell className="text-sm text-blue-500 font-bold text-center">{status?.name === 'مرتجع' ? '✓' : '-'}</TableCell>
                         <TableCell className="text-sm font-bold text-primary">{net} ج.م</TableCell>
                         <TableCell>
                           {status ? <Badge style={{ backgroundColor: status.color }} className="text-xs">{status.name}</Badge> : '-'}
@@ -758,7 +756,7 @@ export default function OfficeAccounts() {
                     }, 0)} ج.م</TableCell>
                     <TableCell className="font-bold">{filteredOrders.reduce((s, o) => s + Number(o.delivery_price || 0), 0)} ج.م</TableCell>
                     <TableCell className="font-bold text-amber-500">{courierRate * filteredOrders.length} ج.م</TableCell>
-                    <TableCell className="font-bold text-blue-500">{officeRate * filteredOrders.length} ج.م</TableCell>
+                    <TableCell className="font-bold text-blue-500 text-center">{filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length}</TableCell>
                     <TableCell className="font-bold text-primary">{filteredOrders.reduce((s, o) => s + getOrderOfficeDue(o), 0)} ج.م</TableCell>
                     <TableCell colSpan={4} />
                   </TableRow>
