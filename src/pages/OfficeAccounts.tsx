@@ -695,8 +695,8 @@ export default function OfficeAccounts() {
                      <TableHead className="text-right">المكتب</TableHead>
                      <TableHead className="text-right">الإجمالي</TableHead>
                      <TableHead className="text-right">الشحن</TableHead>
-                     <TableHead className="text-right">عمولة المندوب</TableHead>
-                     <TableHead className="text-right">عمولة المكتب</TableHead>
+                     <TableHead className="text-right">مواصلات المندوب</TableHead>
+                     <TableHead className="text-right">مرتجع المكتب</TableHead>
                      <TableHead className="text-right">الصافي</TableHead>
                      <TableHead className="text-right">الحالة</TableHead>
                      <TableHead className="text-right">المندوب</TableHead>
