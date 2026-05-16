@@ -331,7 +331,7 @@ export default function OfficeAccounts() {
         'السعر': displayTotal,
         'الشحن': Number(o.delivery_price || 0),
         'مواصلات المندوب': courierRate,
-        'مرتجع المكتب': officeRate,
+        'مرتجع': st?.name === 'مرتجع' ? '✓' : '',
         'الصافي': getOrderOfficeDue(o),
         'الحالة': statusName(o.status_id),
         'المندوب': getCourierName(o.courier_id),
@@ -343,6 +343,8 @@ export default function OfficeAccounts() {
       return s + (st?.name === 'تسليم جزئي' ? Math.max(0, Number(o.partial_amount || 0) - Number(o.delivery_price || 0)) : Number(o.price || 0));
     }, 0);
 
+    const returnsCount = filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length;
+
     data.push({
       '#': '' as any,
       'الباركود': '',
@@ -353,7 +355,7 @@ export default function OfficeAccounts() {
       'السعر': totalDisplay,
       'الشحن': filteredOrders.reduce((s, o) => s + Number(o.delivery_price || 0), 0),
       'مواصلات المندوب': courierRate * filteredOrders.length,
-      'مرتجع المكتب': officeRate * filteredOrders.length,
+      'مرتجع': `${returnsCount} أوردر` as any,
       'الصافي': filteredOrders.reduce((s, o) => s + getOrderOfficeDue(o), 0),
       'الحالة': '',
       'المندوب': '',
