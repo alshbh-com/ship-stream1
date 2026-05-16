@@ -416,7 +416,7 @@ export default function OfficeAccounts() {
     <div class="sub-header">${format(new Date(), 'dd/MM/yyyy')}</div>
     
     <table>
-      <thead><tr><th>#</th><th>الباركود</th><th>العميل</th><th>الهاتف</th><th>الإجمالي</th><th>الشحن</th><th>عمولة المندوب</th><th>عمولة المكتب</th><th>الصافي</th><th>الحالة</th><th>المندوب</th></tr></thead>
+      <thead><tr><th>#</th><th>الباركود</th><th>العميل</th><th>الهاتف</th><th>الإجمالي</th><th>الشحن</th><th>مواصلات المندوب</th><th>مرتجع</th><th>الصافي</th><th>الحالة</th><th>المندوب</th></tr></thead>
       <tbody>
         ${orderRows}
         <tr class="total-row">
@@ -424,7 +424,7 @@ export default function OfficeAccounts() {
           <td>${totalPrice}</td>
           <td>${totalShipping}</td>
           <td>${courierRate * filteredOrders.length}</td>
-          <td>${officeRate * filteredOrders.length}</td>
+          <td style="text-align:center">${filteredOrders.filter(o => statusName(o.status_id) === 'مرتجع').length} أوردر</td>
           <td>${totalNet}</td>
           <td colspan="2"></td>
         </tr>
