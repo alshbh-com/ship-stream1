@@ -222,18 +222,18 @@ export default function CourierCollections() {
 
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">حاسبة العمولة</CardTitle>
+              <CardTitle className="text-base">حاسبة المواصلات</CardTitle>
               <div className="flex gap-2 flex-wrap">
                 <Dialog open={bonusDialogOpen} onOpenChange={v => { setBonusDialogOpen(v); if (!v) setBonusType('special'); }}>
                   <div className="flex gap-1">
-                    <Button size="sm" variant="outline" onClick={() => { setBonusType('special'); setBonusDialogOpen(true); }}><Plus className="h-4 w-4 ml-1" />عمولة للمندوب</Button>
-                    <Button size="sm" variant="outline" onClick={() => { setBonusType('office_commission'); setBonusDialogOpen(true); }}><Plus className="h-4 w-4 ml-1" />عمولة مكتب</Button>
+                    <Button size="sm" variant="outline" onClick={() => { setBonusType('special'); setBonusDialogOpen(true); }}><Plus className="h-4 w-4 ml-1" />مواصلات</Button>
+                    <Button size="sm" variant="outline" onClick={() => { setBonusType('office_commission'); setBonusDialogOpen(true); }}><Plus className="h-4 w-4 ml-1" />مرتجع</Button>
                   </div>
                   <DialogContent className="bg-card border-border">
-                    <DialogHeader><DialogTitle>{bonusType === 'office_commission' ? 'إضافة عمولة مكتب' : 'إضافة عمولة للمندوب'}</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>{bonusType === 'office_commission' ? 'إضافة مرتجع' : 'إضافة مواصلات'}</DialogTitle></DialogHeader>
                     <div className="space-y-4">
                       <div><Label>المبلغ</Label><Input type="number" value={bonusAmount} onChange={e => setBonusAmount(e.target.value)} className="bg-secondary border-border" /></div>
-                      <div><Label>{bonusType === 'office_commission' ? 'ملاحظة / السبب' : 'السبب'}</Label><Input value={bonusReason} onChange={e => setBonusReason(e.target.value)} className="bg-secondary border-border" placeholder={bonusType === 'office_commission' ? 'سبب عمولة المكتب...' : 'مشوار خاص...'} /></div>
+                      <div><Label>{bonusType === 'office_commission' ? 'ملاحظة / السبب' : 'السبب'}</Label><Input value={bonusReason} onChange={e => setBonusReason(e.target.value)} className="bg-secondary border-border" placeholder={bonusType === 'office_commission' ? 'سبب المرتجع...' : 'مشوار / مواصلات...'} /></div>
                       <Button onClick={addBonus} className="w-full">حفظ</Button>
                     </div>
                   </DialogContent>
