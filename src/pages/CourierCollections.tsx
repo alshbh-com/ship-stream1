@@ -269,7 +269,7 @@ export default function CourierCollections() {
 
           {bonuses.length > 0 && (
             <Card className="bg-card border-border">
-              <CardHeader><CardTitle className="text-base">العمولات</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">المواصلات والمرتجعات</CardTitle></CardHeader>
               <CardContent className="p-0">
                 <Table>
                   <TableHeader><TableRow className="border-border">
