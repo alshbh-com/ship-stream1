@@ -754,7 +754,7 @@ export default function OfficeAccounts() {
                     }, 0)} ج.م</TableCell>
                     <TableCell className="font-bold">{filteredOrders.reduce((s, o) => s + Number(o.delivery_price || 0), 0)} ج.م</TableCell>
                     <TableCell className="font-bold text-amber-500">{courierRate * filteredOrders.length} ج.م</TableCell>
-                    <TableCell className="font-bold text-blue-500">{officeRate * filteredOrders.length} ج.م</TableCell>
+                    <TableCell className="font-bold text-blue-500 text-center">{filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length}</TableCell>
                     <TableCell className="font-bold text-primary">{filteredOrders.reduce((s, o) => s + getOrderOfficeDue(o), 0)} ج.م</TableCell>
                     <TableCell colSpan={4} />
                   </TableRow>
