@@ -257,7 +257,7 @@ export default function CourierCollections() {
               </div>
               <div className="flex gap-3 items-end">
                 <div className="space-y-1">
-                  <Label className="text-xs">مبلغ العمولة لكل أوردر (ج.م)</Label>
+                  <Label className="text-xs">مبلغ المواصلات لكل أوردر (ج.م)</Label>
                   <Input type="number" value={commissionPerOrder} onChange={e => setCommissionPerOrder(e.target.value)}
                     className="w-40 bg-secondary border-border" placeholder="30"
                     onFocus={e => { if (e.target.value === '0') setCommissionPerOrder(''); }} />
