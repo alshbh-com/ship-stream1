@@ -226,15 +226,12 @@ export default function CourierCollections() {
               <CardTitle className="text-base">حاسبة المواصلات</CardTitle>
               <div className="flex gap-2 flex-wrap">
                 <Dialog open={bonusDialogOpen} onOpenChange={v => { setBonusDialogOpen(v); if (!v) setBonusType('special'); }}>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="outline" onClick={() => { setBonusType('special'); setBonusDialogOpen(true); }}><Plus className="h-4 w-4 ml-1" />مواصلات</Button>
-                    <Button size="sm" variant="outline" onClick={() => { setBonusType('office_commission'); setBonusDialogOpen(true); }}><Plus className="h-4 w-4 ml-1" />مرتجع</Button>
-                  </div>
+                  <Button size="sm" variant="outline" onClick={() => { setBonusType('special'); setBonusDialogOpen(true); }}><Plus className="h-4 w-4 ml-1" />مواصلات</Button>
                   <DialogContent className="bg-card border-border">
-                    <DialogHeader><DialogTitle>{bonusType === 'office_commission' ? 'إضافة مرتجع' : 'إضافة مواصلات'}</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>إضافة مواصلات</DialogTitle></DialogHeader>
                     <div className="space-y-4">
                       <div><Label>المبلغ</Label><Input type="number" value={bonusAmount} onChange={e => setBonusAmount(e.target.value)} className="bg-secondary border-border" /></div>
-                      <div><Label>{bonusType === 'office_commission' ? 'ملاحظة / السبب' : 'السبب'}</Label><Input value={bonusReason} onChange={e => setBonusReason(e.target.value)} className="bg-secondary border-border" placeholder={bonusType === 'office_commission' ? 'سبب المرتجع...' : 'مشوار / مواصلات...'} /></div>
+                      <div><Label>السبب</Label><Input value={bonusReason} onChange={e => setBonusReason(e.target.value)} className="bg-secondary border-border" placeholder="مشوار / مواصلات..." /></div>
                       <Button onClick={addBonus} className="w-full">حفظ</Button>
                     </div>
                   </DialogContent>
