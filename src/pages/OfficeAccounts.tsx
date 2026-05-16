@@ -386,7 +386,7 @@ export default function OfficeAccounts() {
         <td>${displayTotal}${isPartial ? ` <small>(من ${Number(o.price || 0)})</small>` : ''}</td>
         <td>${Number(o.delivery_price || 0)}</td>
         <td>${courierRate}</td>
-        <td>${officeRate}</td>
+        <td style="text-align:center">${statusName(o.status_id) === 'مرتجع' ? '✓' : '-'}</td>
         <td>${getOrderOfficeDue(o)}</td>
         <td>${statusName(o.status_id)}</td>
         <td>${getCourierName(o.courier_id)}</td>
