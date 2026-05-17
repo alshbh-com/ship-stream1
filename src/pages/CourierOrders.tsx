@@ -150,6 +150,23 @@ export default function CourierOrders() {
     supabase.from('order_statuses').select('*').order('sort_order').then(({ data }) => setStatuses(data || []));
   }, [syncLocationPermission]);
 
+  // Realtime: reload when any order assigned to this courier changes/added
+  useEffect(() => {
+    if (!user?.id) return;
+    const ch = supabase.channel('courier-orders-' + user.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `courier_id=eq.${user.id}` }, () => {
+        load();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (p: any) => {
+        // Catch unassignments (courier_id changed away from this user)
+        if (p.old?.courier_id === user.id && p.new?.courier_id !== user.id) load();
+      })
+      .subscribe();
+    // Poll every 30s as a safety net (in case realtime drops)
+    const interval = setInterval(load, 30000);
+    return () => { supabase.removeChannel(ch); clearInterval(interval); };
+  }, [user?.id]);
+
   useEffect(() => {
     const handleResume = () => syncLocationPermission();
     window.addEventListener('focus', handleResume);
