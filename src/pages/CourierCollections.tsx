@@ -9,10 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, Lock, Search } from 'lucide-react';
+import { Plus, Trash2, Lock, Search, FileSpreadsheet, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { logActivity } from '@/lib/activityLogger';
+import ExcelJS from 'exceljs';
+import logoUrl from '@/assets/logo.jpg';
+
+const RETURN_STATUS_NAMES = ['مرتجع', 'رفض ودفع شحن', 'رفض ولم يدفع شحن', 'تهرب', 'ملغي', 'لم يرد', 'لا يرد'];
 
 export default function CourierCollections() {
   const { user, isOwner } = useAuth();
@@ -96,8 +100,8 @@ export default function CourierCollections() {
   const eligibleOrders = orders.filter(o => commissionStatuses.includes(o.status_id));
   const commissionTotal = eligibleOrders.length * rate;
 
-  // مرتجع = عداد فقط (عدد الأوردرات اللي حالتها "مرتجع")
-  const returnsCount = orders.filter(o => o.order_statuses?.name === 'مرتجع').length;
+  // مرتجع = عداد فقط — يشمل: مرتجع، رفض ودفع شحن، رفض ولم يدفع شحن، تهرب، ملغي، لم يرد، لا يرد
+  const returnsCount = orders.filter(o => RETURN_STATUS_NAMES.includes(o.order_statuses?.name)).length;
   const regularBonuses = bonuses.filter(b => !b.reason?.startsWith('__office_commission__'));
   const totalRegularBonuses = regularBonuses.reduce((sum, b) => sum + Number(b.amount), 0);
 
@@ -172,7 +176,7 @@ export default function CourierCollections() {
     });
     if (error) { toast.error(error.message); return; }
     logActivity('إضافة عمولة لمندوب', { courier_id: selectedCourier, type: bonusType, amount: parseFloat(bonusAmount) });
-    toast.success(bonusType === 'office_commission' ? 'تم إضافة المرتجع' : 'تم إضافة المواصلات');
+    toast.success(bonusType === 'office_commission' ? 'تم إضافة المرتجع' : 'تم إضافة العمولة');
     setBonusDialogOpen(false);
     setBonusAmount('');
     setBonusReason('');
@@ -198,6 +202,164 @@ export default function CourierCollections() {
     toast.success('تم حفظ الملاحظة');
   };
 
+  const courierName = couriers.find(c => c.id === selectedCourier)?.full_name || '';
+
+  const exportExcel = async () => {
+    if (!filteredOrders.length) { toast.error('لا توجد أوردرات للتصدير'); return; }
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Star Logistics Systems';
+      const ws = wb.addWorksheet('حساب المندوب', { views: [{ rightToLeft: true }] });
+
+      const logoResp = await fetch(logoUrl);
+      const logoBuf = await logoResp.arrayBuffer();
+      const imgId = wb.addImage({ buffer: logoBuf, extension: 'jpeg' });
+      ws.addImage(imgId, { tl: { col: 0.2, row: 0.2 }, ext: { width: 90, height: 90 } });
+      ws.getRow(1).height = 70;
+
+      ws.mergeCells('B1:I1');
+      const t = ws.getCell('B1');
+      t.value = 'Star Logistics Systems';
+      t.font = { name: 'Cairo', size: 20, bold: true, color: { argb: 'FFFFFFFF' } };
+      t.alignment = { horizontal: 'center', vertical: 'middle' };
+      t.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEA580C' } };
+
+      ws.mergeCells('B2:I2');
+      const s = ws.getCell('B2');
+      s.value = `حساب المندوب: ${courierName}  -  ${new Date().toLocaleDateString('ar-EG')}`;
+      s.font = { name: 'Cairo', size: 13, bold: true };
+      s.alignment = { horizontal: 'center', vertical: 'middle' };
+      s.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3E7' } };
+      ws.getRow(2).height = 25;
+
+      const headers = ['#', 'الباركود', 'التاريخ', 'العميل', 'الهاتف', 'الراسل', 'المبلغ', 'الحالة', 'التحصيل'];
+      const hr = ws.addRow(headers);
+      hr.eachCell((c) => {
+        c.font = { name: 'Cairo', bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
+        c.alignment = { horizontal: 'center', vertical: 'middle' };
+        c.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+      });
+      hr.height = 22;
+
+      filteredOrders.forEach((o, i) => {
+        const collected = getCollectedAmount(o);
+        const r = ws.addRow([
+          i + 1, o.barcode || '-',
+          o.created_at ? new Date(o.created_at).toLocaleDateString('ar-EG') : '-',
+          o.customer_name || '-', o.customer_phone || '-',
+          getOfficeName(o.office_id),
+          Number(o.price) + Number(o.delivery_price),
+          o.order_statuses?.name || '-',
+          collected,
+        ]);
+        r.eachCell((c, col) => {
+          c.font = { name: 'Cairo', size: 10 };
+          c.alignment = { horizontal: 'center', vertical: 'middle' };
+          c.border = { top: { style: 'hair' }, bottom: { style: 'hair' }, left: { style: 'hair' }, right: { style: 'hair' } };
+          if (col === 7 || col === 9) c.numFmt = '#,##0" ج.م"';
+        });
+        if (i % 2 === 0) r.eachCell((c) => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } }; });
+      });
+
+      ws.addRow([]);
+      const summary: [string, number | string][] = [
+        ['عدد الأوردرات', filteredOrders.length],
+        ['إجمالي التحصيل', totalCollection],
+        ['عدد المرتجعات', `${returnsCount} أوردر`],
+        ['العمولة (تخصم)', commissionTotal],
+        ['مواصلات/بنود إضافية', totalRegularBonuses],
+        ['صافي المستحق للمندوب', netDue],
+      ];
+      summary.forEach(([label, val], idx) => {
+        const r = ws.addRow([]);
+        ws.mergeCells(`A${r.number}:F${r.number}`);
+        const lc = ws.getCell(`G${r.number}`);
+        const vc = ws.getCell(`H${r.number}`);
+        ws.mergeCells(`H${r.number}:I${r.number}`);
+        lc.value = label;
+        vc.value = val;
+        lc.font = { name: 'Cairo', bold: true, size: 11 };
+        vc.font = { name: 'Cairo', bold: true, size: 11, color: { argb: idx === 5 ? 'FFEA580C' : 'FF1F2937' } };
+        lc.alignment = { horizontal: 'right', vertical: 'middle' };
+        vc.alignment = { horizontal: 'center', vertical: 'middle' };
+        if (typeof val === 'number') vc.numFmt = '#,##0" ج.م"';
+        [lc, vc].forEach(c => {
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3E7' } };
+          c.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+        });
+        r.height = 22;
+      });
+
+      ws.columns = [
+        { width: 6 }, { width: 16 }, { width: 14 }, { width: 22 }, { width: 16 },
+        { width: 18 }, { width: 14 }, { width: 18 }, { width: 14 },
+      ];
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `حساب-${courierName}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.click();
+      toast.success('تم التصدير بنجاح');
+    } catch (err: any) {
+      toast.error('خطأ في التصدير: ' + err.message);
+    }
+  };
+
+  const exportPDF = () => {
+    if (!filteredOrders.length) { toast.error('لا توجد أوردرات للتصدير'); return; }
+    const w = window.open('', '_blank');
+    if (!w) return;
+    const rows = filteredOrders.map((o, i) => `<tr>
+      <td>${i + 1}</td>
+      <td>${o.barcode || '-'}</td>
+      <td>${o.created_at ? new Date(o.created_at).toLocaleDateString('ar-EG') : '-'}</td>
+      <td>${o.customer_name || '-'}</td>
+      <td>${o.customer_phone || '-'}</td>
+      <td>${getOfficeName(o.office_id)}</td>
+      <td>${Number(o.price) + Number(o.delivery_price)}</td>
+      <td>${o.order_statuses?.name || '-'}</td>
+      <td>${getCollectedAmount(o) || '-'}</td>
+    </tr>`).join('');
+    w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">
+      <title>حساب ${courierName}</title>
+      <style>
+        @page { size: A4 landscape; margin: 8mm; }
+        body { font-family: 'Cairo', Tahoma, Arial; font-size: 11px; padding: 10px; }
+        .header { display: flex; align-items: center; gap: 15px; border-bottom: 3px solid #ea580c; padding-bottom: 10px; margin-bottom: 12px; }
+        .header img { height: 70px; }
+        .header h1 { margin: 0; color: #ea580c; font-size: 22px; }
+        .header p { margin: 4px 0 0; color: #666; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1f2937; color: #fff; padding: 6px; border: 1px solid #1f2937; }
+        td { padding: 5px; border: 1px solid #ddd; text-align: center; }
+        tr:nth-child(even) td { background: #fafafa; }
+        .summary { margin-top: 15px; }
+        .summary table { width: 60%; margin-right: 0; }
+        .summary th { background: #fef3e7; color: #1f2937; text-align: right; }
+        .summary td { text-align: center; font-weight: bold; }
+        .total-row td { background: #ea580c; color: #fff; font-size: 13px; }
+      </style></head><body>
+      <div class="header"><img src="${logoUrl}" /><div><h1>Star Logistics Systems</h1><p>حساب المندوب: ${courierName} - ${new Date().toLocaleDateString('ar-EG')}</p></div></div>
+      <table>
+        <thead><tr><th>#</th><th>الباركود</th><th>التاريخ</th><th>العميل</th><th>الهاتف</th><th>الراسل</th><th>المبلغ</th><th>الحالة</th><th>التحصيل</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="summary"><table>
+        <tr><th>عدد الأوردرات</th><td>${filteredOrders.length}</td></tr>
+        <tr><th>إجمالي التحصيل</th><td>${totalCollection} ج.م</td></tr>
+        <tr><th>عدد المرتجعات</th><td>${returnsCount} أوردر</td></tr>
+        <tr><th>العمولة (تخصم)</th><td>${commissionTotal} ج.م</td></tr>
+        <tr><th>مواصلات/بنود إضافية</th><td>${totalRegularBonuses} ج.م</td></tr>
+        <tr class="total-row"><th style="background:#ea580c;color:#fff">صافي المستحق للمندوب</th><td>${netDue} ج.م</td></tr>
+      </table></div>
+      <script>window.onload=()=>{setTimeout(()=>window.print(),300)}</script>
+      </body></html>`);
+    w.document.close();
+  };
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">تحصيلات المندوبين</h1>
@@ -217,21 +379,30 @@ export default function CourierCollections() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="bg-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">إجمالي التحصيل</p><p className="text-lg font-bold text-emerald-500">{totalCollection} ج.م</p></CardContent></Card>
             <Card className="bg-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">مرتجع</p><p className="text-lg font-bold text-amber-500">{returnsCount} <span className="text-xs">أوردر</span></p></CardContent></Card>
-            <Card className="bg-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">المواصلات</p><p className="text-lg font-bold text-destructive">{commissionTotal} ج.م</p></CardContent></Card>
+            <Card className="bg-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">العمولة</p><p className="text-lg font-bold text-destructive">{commissionTotal} ج.م</p></CardContent></Card>
             <Card className="bg-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">صافي المستحق</p><p className="text-lg font-bold text-primary">{netDue} ج.م</p></CardContent></Card>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant="outline" onClick={exportExcel}>
+              <FileSpreadsheet className="h-4 w-4 ml-1" />تصدير Excel
+            </Button>
+            <Button size="sm" variant="outline" onClick={exportPDF}>
+              <FileText className="h-4 w-4 ml-1" />تصدير PDF
+            </Button>
           </div>
 
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">حاسبة المواصلات</CardTitle>
+              <CardTitle className="text-base">حاسبة العمولة</CardTitle>
               <div className="flex gap-2 flex-wrap">
                 <Dialog open={bonusDialogOpen} onOpenChange={v => { setBonusDialogOpen(v); if (!v) setBonusType('special'); }}>
-                  <Button size="sm" variant="outline" onClick={() => { setBonusType('special'); setBonusDialogOpen(true); }}><Plus className="h-4 w-4 ml-1" />مواصلات</Button>
+                  <Button size="sm" variant="outline" onClick={() => { setBonusType('special'); setBonusDialogOpen(true); }}><Plus className="h-4 w-4 ml-1" />عمولة</Button>
                   <DialogContent className="bg-card border-border">
-                    <DialogHeader><DialogTitle>إضافة مواصلات</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>إضافة عمولة</DialogTitle></DialogHeader>
                     <div className="space-y-4">
                       <div><Label>المبلغ</Label><Input type="number" value={bonusAmount} onChange={e => setBonusAmount(e.target.value)} className="bg-secondary border-border" /></div>
-                      <div><Label>السبب</Label><Input value={bonusReason} onChange={e => setBonusReason(e.target.value)} className="bg-secondary border-border" placeholder="مشوار / مواصلات..." /></div>
+                      <div><Label>السبب</Label><Input value={bonusReason} onChange={e => setBonusReason(e.target.value)} className="bg-secondary border-border" placeholder="مشوار / مواصلات / عمولة..." /></div>
                       <Button onClick={addBonus} className="w-full">حفظ</Button>
                     </div>
                   </DialogContent>
@@ -255,7 +426,7 @@ export default function CourierCollections() {
               </div>
               <div className="flex gap-3 items-end">
                 <div className="space-y-1">
-                  <Label className="text-xs">مبلغ المواصلات لكل أوردر (ج.م)</Label>
+                  <Label className="text-xs">مبلغ العمولة لكل أوردر (ج.م)</Label>
                   <Input type="number" value={commissionPerOrder} onChange={e => setCommissionPerOrder(e.target.value)}
                     className="w-40 bg-secondary border-border" placeholder="30"
                     onFocus={e => { if (e.target.value === '0') setCommissionPerOrder(''); }} />
@@ -267,7 +438,7 @@ export default function CourierCollections() {
 
           {bonuses.length > 0 && (
             <Card className="bg-card border-border">
-              <CardHeader><CardTitle className="text-base">المواصلات والمرتجعات</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">العمولات والمرتجعات</CardTitle></CardHeader>
               <CardContent className="p-0">
                 <Table>
                   <TableHeader><TableRow className="border-border">
@@ -280,7 +451,7 @@ export default function CourierCollections() {
                   <TableBody>
                     {bonuses.map(b => (
                       <TableRow key={b.id} className="border-border">
-                        <TableCell className="text-sm">{b.reason?.startsWith('__office_commission__') ? 'مرتجع' : 'مواصلات'}</TableCell>
+                        <TableCell className="text-sm">{b.reason?.startsWith('__office_commission__') ? 'مرتجع' : 'عمولة'}</TableCell>
                         <TableCell className="font-bold">{b.amount} ج.م</TableCell>
                         <TableCell>{b.reason?.startsWith('__office_commission__') ? (b.reason.split(':')[1] || '-') : (b.reason || '-')}</TableCell>
                         <TableCell>{new Date(b.created_at).toLocaleDateString('ar-EG')}</TableCell>
