@@ -178,7 +178,7 @@ export default function CourierCollections() {
     });
     if (error) { toast.error(error.message); return; }
     logActivity('إضافة عمولة لمندوب', { courier_id: selectedCourier, type: bonusType, amount: parseFloat(bonusAmount) });
-    toast.success(bonusType === 'office_commission' ? 'تم إضافة المرتجع' : 'تم إضافة المواصلات');
+    toast.success(bonusType === 'office_commission' ? 'تم إضافة المرتجع' : 'تم إضافة العمولة');
     setBonusDialogOpen(false);
     setBonusAmount('');
     setBonusReason('');
