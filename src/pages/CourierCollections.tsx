@@ -14,8 +14,6 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { logActivity } from '@/lib/activityLogger';
 import ExcelJS from 'exceljs';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import logoUrl from '@/assets/logo.jpg';
 
 const RETURN_STATUS_NAMES = ['مرتجع', 'رفض ودفع شحن', 'رفض ولم يدفع شحن', 'تهرب', 'ملغي', 'لم يرد', 'لا يرد'];
