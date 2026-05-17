@@ -186,7 +186,7 @@ export default function CompanyAccounts() {
 
       // عرض الأعمدة
       ws.columns = [
-        { width: 6 }, { width: 16 }, { width: 14 }, { width: 22 }, { width: 16 },
+        { width: 22 }, { width: 16 }, { width: 14 }, { width: 22 }, { width: 16 },
         { width: 14 }, { width: 14 }, { width: 18 },
       ];
 
