@@ -102,8 +102,8 @@ export default function CourierCollections() {
   const eligibleOrders = orders.filter(o => commissionStatuses.includes(o.status_id));
   const commissionTotal = eligibleOrders.length * rate;
 
-  // مرتجع = عداد فقط (عدد الأوردرات اللي حالتها "مرتجع")
-  const returnsCount = orders.filter(o => o.order_statuses?.name === 'مرتجع').length;
+  // مرتجع = عداد فقط — يشمل: مرتجع، رفض ودفع شحن، رفض ولم يدفع شحن، تهرب، ملغي، لم يرد، لا يرد
+  const returnsCount = orders.filter(o => RETURN_STATUS_NAMES.includes(o.order_statuses?.name)).length;
   const regularBonuses = bonuses.filter(b => !b.reason?.startsWith('__office_commission__'));
   const totalRegularBonuses = regularBonuses.reduce((sum, b) => sum + Number(b.amount), 0);
 
