@@ -315,59 +315,149 @@ export default function OfficeAccounts() {
 
   const officeName = offices.find(o => o.id === selectedOffice)?.name || '';
 
-  const exportToExcel = () => {
+  // التحصيل = الفلوس اللي المندوب استلمها من العميل
+  const getOrderCollected = (o: any) => {
+    const status = statuses.find(s => s.id === o.status_id);
+    const name = status?.name || '';
+    const price = Number(o.price || 0);
+    const ship = Number(o.delivery_price || 0);
+    const partial = Number(o.partial_amount || 0);
+    if (name === 'تم التسليم') return price + ship;
+    if (name === 'تسليم جزئي') return partial;
+    if (name === 'رفض ودفع شحن') return ship;
+    return 0;
+  };
+
+  const exportToExcel = async () => {
     if (filteredOrders.length === 0) { toast.error('لا توجد بيانات للتصدير'); return; }
-    const statusName = (sid: string) => statuses.find(s => s.id === sid)?.name || '-';
+    try {
+      const statusName = (sid: string) => statuses.find(s => s.id === sid)?.name || '-';
 
-    const data = filteredOrders.map((o, i) => {
-      const st = statuses.find(s => s.id === o.status_id);
-      const isPartial = st?.name === 'تسليم جزئي';
-      const displayTotal = isPartial ? Math.max(0, Number(o.partial_amount || 0) - Number(o.delivery_price || 0)) : Number(o.price || 0);
-      return {
-        '#': i + 1,
-        'الباركود': o.barcode || '-',
-        'الكود': o.customer_code || '-',
-        'العميل': o.customer_name || '-',
-        'الهاتف': o.customer_phone || '-',
-        'المكتب': getOfficeName(o.office_id),
-        'السعر': displayTotal,
-        'الشحن': Number(o.delivery_price || 0),
-        'مواصلات المندوب': courierRate,
-        'مرتجع': st?.name === 'مرتجع' ? '✓' : '',
-        'الصافي': getOrderOfficeDue(o),
-        'الحالة': statusName(o.status_id),
-        'المندوب': getCourierName(o.courier_id),
-      };
-    });
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Star Logistics Systems';
+      wb.created = new Date();
+      const ws = wb.addWorksheet('حسابات المكتب', { views: [{ rightToLeft: true }] });
 
-    const totalDisplay = filteredOrders.reduce((s, o) => {
-      const st = statuses.find(x => x.id === o.status_id);
-      return s + (st?.name === 'تسليم جزئي' ? Math.max(0, Number(o.partial_amount || 0) - Number(o.delivery_price || 0)) : Number(o.price || 0));
-    }, 0);
+      // اللوجو
+      const logoResp = await fetch(logoUrl);
+      const logoBuf = await logoResp.arrayBuffer();
+      const imgId = wb.addImage({ buffer: logoBuf, extension: 'jpeg' });
+      ws.addImage(imgId, { tl: { col: 0.2, row: 0.2 }, ext: { width: 90, height: 90 } });
+      ws.getRow(1).height = 70;
 
-    const returnsCount = filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length;
+      // الترويسة
+      ws.mergeCells('B1:L1');
+      const titleCell = ws.getCell('B1');
+      titleCell.value = 'Star Logistics Systems';
+      titleCell.font = { name: 'Cairo', size: 20, bold: true, color: { argb: 'FFFFFFFF' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEA580C' } };
 
-    data.push({
-      '#': '' as any,
-      'الباركود': '',
-      'الكود': '',
-      'العميل': 'الإجمالي',
-      'الهاتف': '',
-      'المكتب': '',
-      'السعر': totalDisplay,
-      'الشحن': filteredOrders.reduce((s, o) => s + Number(o.delivery_price || 0), 0),
-      'مواصلات المندوب': courierRate * filteredOrders.length,
-      'مرتجع': `${returnsCount} أوردر` as any,
-      'الصافي': filteredOrders.reduce((s, o) => s + getOrderOfficeDue(o), 0),
-      'الحالة': '',
-      'المندوب': '',
-    });
+      ws.mergeCells('B2:L2');
+      const subCell = ws.getCell('B2');
+      subCell.value = `حساب المكتب: ${officeName}  -  ${format(new Date(), 'yyyy-MM-dd')}`;
+      subCell.font = { name: 'Cairo', size: 13, bold: true };
+      subCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3E7' } };
+      ws.getRow(2).height = 25;
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'حسابات');
-    XLSX.writeFile(wb, `حسابات-${officeName}-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
-    toast.success('تم التصدير بنجاح');
+      // رأس الجدول
+      const headers = ['#', 'الباركود', 'الكود', 'العميل', 'الهاتف', 'السعر', 'الشحن', 'التحصيل', 'عمولة الشركة', 'المستحق', 'الحالة', 'المندوب'];
+      const headerRow = ws.addRow(headers);
+      headerRow.eachCell((cell) => {
+        cell.font = { name: 'Cairo', bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+      });
+      headerRow.height = 22;
+
+      // البيانات
+      filteredOrders.forEach((o, i) => {
+        const st = statuses.find(s => s.id === o.status_id);
+        const isPartial = st?.name === 'تسليم جزئي';
+        const displayPrice = isPartial ? Math.max(0, Number(o.partial_amount || 0) - Number(o.delivery_price || 0)) : Number(o.price || 0);
+        const collected = getOrderCollected(o);
+        const commission = Number(o.delivery_price || 0); // عمولة الشركة = الشحن
+        const net = getOrderOfficeDue(o); // المستحق = التحصيل - العمولة (للمكتب)
+        const r = ws.addRow([
+          i + 1,
+          o.barcode || '-',
+          o.customer_code || '-',
+          o.customer_name || '-',
+          o.customer_phone || '-',
+          displayPrice,
+          Number(o.delivery_price || 0),
+          collected,
+          commission,
+          net,
+          statusName(o.status_id),
+          getCourierName(o.courier_id),
+        ]);
+        r.eachCell((cell, col) => {
+          cell.font = { name: 'Cairo', size: 10 };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = { top: { style: 'hair' }, bottom: { style: 'hair' }, left: { style: 'hair' }, right: { style: 'hair' } };
+          if ([6, 7, 8, 9, 10].includes(col)) cell.numFmt = '#,##0" ج.م"';
+        });
+        if (i % 2 === 0) r.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } }; });
+      });
+
+      // الإجماليات
+      const totalPrice = filteredOrders.reduce((s, o) => {
+        const st = statuses.find(x => x.id === o.status_id);
+        return s + (st?.name === 'تسليم جزئي' ? Math.max(0, Number(o.partial_amount || 0) - Number(o.delivery_price || 0)) : Number(o.price || 0));
+      }, 0);
+      const totalShipping = filteredOrders.reduce((s, o) => s + Number(o.delivery_price || 0), 0);
+      const totalCollected = filteredOrders.reduce((s, o) => s + getOrderCollected(o), 0);
+      const totalCommission = totalShipping;
+      const totalNet = filteredOrders.reduce((s, o) => s + getOrderOfficeDue(o), 0);
+      const returnsCount = filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length;
+
+      ws.addRow([]);
+      const summary: [string, any, boolean?][] = [
+        ['عدد الأوردرات', filteredOrders.length],
+        ['عدد المرتجعات', returnsCount],
+        ['إجمالي السعر', totalPrice, true],
+        ['إجمالي الشحن', totalShipping, true],
+        ['إجمالي التحصيل (مع المندوب)', totalCollected, true],
+        ['إجمالي عمولة الشركة', totalCommission, true],
+        ['المستحق الصافي للمكتب (التحصيل - العمولة)', totalNet, true],
+      ];
+      summary.forEach(([label, val, money]) => {
+        const r = ws.addRow(['', '', '', '', '', '', '', '', label, val, '', '']);
+        ws.mergeCells(`A${r.number}:H${r.number}`);
+        const labelCell = ws.getCell(`I${r.number}`);
+        const valCell = ws.getCell(`J${r.number}`);
+        labelCell.value = label;
+        valCell.value = val;
+        labelCell.font = { name: 'Cairo', bold: true, size: 11 };
+        valCell.font = { name: 'Cairo', bold: true, size: 11 };
+        labelCell.alignment = { horizontal: 'right', vertical: 'middle' };
+        valCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        if (money) valCell.numFmt = '#,##0" ج.م"';
+        labelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3E7' } };
+        valCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3E7' } };
+        labelCell.border = valCell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+        r.height = 22;
+      });
+
+      ws.columns = [
+        { width: 6 }, { width: 15 }, { width: 12 }, { width: 20 }, { width: 14 },
+        { width: 12 }, { width: 12 }, { width: 14 }, { width: 14 }, { width: 14 },
+        { width: 16 }, { width: 16 },
+      ];
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `حسابات-${officeName}-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+      link.click();
+      toast.success('تم التصدير بنجاح');
+    } catch (err: any) {
+      toast.error('خطأ في التصدير: ' + err.message);
+    }
   };
 
   const printSheet = () => {
