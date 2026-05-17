@@ -382,27 +382,11 @@ export default function CourierOrders() {
       (/Android/.test(ua) && /; wv\)/.test(ua));
   }, []);
 
-  const [showWebViewBanner, setShowWebViewBanner] = useState(true);
+  const [dismissLocationCard, setDismissLocationCard] = useState(false);
 
   return (
     <div className="min-h-screen bg-background p-3 sm:p-4 md:p-6">
       <div className="mx-auto max-w-4xl space-y-4">
-        {isWebView && showWebViewBanner && (
-          <div className="relative bg-amber-500/10 border border-amber-500/40 rounded-lg p-4 text-right">
-            <button onClick={() => setShowWebViewBanner(false)} className="absolute top-2 left-2 text-muted-foreground hover:text-foreground text-lg leading-none">&times;</button>
-            <p className="font-bold text-amber-700 dark:text-amber-400 text-sm">⚠️ أنت تستخدم التطبيق من داخل WebView</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              للحصول على أفضل تجربة ودعم كامل للموقع (GPS)، ثبّت التطبيق من المتصفح.
-            </p>
-            <a
-              href="/install"
-              className="mt-2 inline-block bg-amber-500 text-white text-xs font-bold px-4 py-2 rounded-md hover:bg-amber-600 transition-colors"
-            >
-              تثبيت التطبيق من المتصفح
-            </a>
-          </div>
-        )}
-
         <div className="flex items-center justify-between">
           <h1 className="text-xl sm:text-2xl font-bold">أوردراتي</h1>
           <div className="flex items-center gap-2">
@@ -420,8 +404,9 @@ export default function CourierOrders() {
           </div>
         </div>
 
-        {locationGranted !== true && (
-          <Card className="border-destructive bg-destructive/5">
+        {locationGranted !== true && !dismissLocationCard && (
+          <Card className="border-destructive bg-destructive/5 relative">
+            <button onClick={() => setDismissLocationCard(true)} className="absolute top-2 left-2 z-10 text-muted-foreground hover:text-foreground text-xl leading-none w-7 h-7 flex items-center justify-center rounded-full hover:bg-muted" title="إخفاء">&times;</button>
             <CardContent className="p-6 space-y-4 text-center">
               <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
                 <MapPin className="h-8 w-8 text-destructive" />
