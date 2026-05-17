@@ -9,10 +9,16 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, Lock, Search } from 'lucide-react';
+import { Plus, Trash2, Lock, Search, FileSpreadsheet, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { logActivity } from '@/lib/activityLogger';
+import ExcelJS from 'exceljs';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import logoUrl from '@/assets/logo.jpg';
+
+const RETURN_STATUS_NAMES = ['مرتجع', 'رفض ودفع شحن', 'رفض ولم يدفع شحن', 'تهرب', 'ملغي', 'لم يرد', 'لا يرد'];
 
 export default function CourierCollections() {
   const { user, isOwner } = useAuth();
