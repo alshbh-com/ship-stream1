@@ -404,8 +404,9 @@ export default function CourierOrders() {
           </div>
         </div>
 
-        {locationGranted !== true && (
-          <Card className="border-destructive bg-destructive/5">
+        {locationGranted !== true && !dismissLocationCard && (
+          <Card className="border-destructive bg-destructive/5 relative">
+            <button onClick={() => setDismissLocationCard(true)} className="absolute top-2 left-2 z-10 text-muted-foreground hover:text-foreground text-xl leading-none w-7 h-7 flex items-center justify-center rounded-full hover:bg-muted" title="إخفاء">&times;</button>
             <CardContent className="p-6 space-y-4 text-center">
               <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
                 <MapPin className="h-8 w-8 text-destructive" />
