@@ -361,6 +361,8 @@ export default function CourierCollections() {
       </body></html>`);
     w.document.close();
   };
+
+  return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">تحصيلات المندوبين</h1>
 
