@@ -15,6 +15,8 @@ import { Plus, Pencil, Trash2, Printer, FileSpreadsheet, Search } from 'lucide-r
 import { toast } from 'sonner';
 import { logActivity } from '@/lib/activityLogger';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import logoUrl from '@/assets/logo.jpg';
 import { format } from 'date-fns';
 
 
