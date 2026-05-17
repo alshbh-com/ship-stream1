@@ -92,19 +92,25 @@ export default function CompanyAccounts() {
       wb.created = new Date();
       const ws = wb.addWorksheet('حساب الشركة', { views: [{ rightToLeft: true }] });
 
-      // اللوجو
+      // اللوجو - في خانة فاضية مخصصة له (عرضي)
       const logoResp = await fetch(logoUrl);
       const logoBuf = await logoResp.arrayBuffer();
       const imgId = wb.addImage({ buffer: logoBuf, extension: 'jpeg' });
-      ws.addImage(imgId, { tl: { col: 0.2, row: 0.2 }, ext: { width: 90, height: 90 } });
+      // ندمج خلية مخصصة للوجو في أول الصف ونحط اللوجو جواها بشكل عرضي
+      ws.mergeCells('A1:A2');
+      ws.addImage(imgId, {
+        tl: { col: 0.1, row: 0.1 },
+        ext: { width: 140, height: 55 },
+        editAs: 'oneCell',
+      });
+      ws.getRow(1).height = 32;
+      ws.getRow(2).height = 32;
 
-      ws.getRow(1).height = 70;
-
-      // الترويسة
+      // الترويسة - بعد خانة اللوجو
       ws.mergeCells('B1:H1');
       const titleCell = ws.getCell('B1');
       titleCell.value = 'Star Logistics Systems';
-      titleCell.font = { name: 'Cairo', size: 20, bold: true, color: { argb: 'FFFFFFFF' } };
+      titleCell.font = { name: 'Cairo', size: 18, bold: true, color: { argb: 'FFFFFFFF' } };
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEA580C' } };
 
@@ -180,7 +186,7 @@ export default function CompanyAccounts() {
 
       // عرض الأعمدة
       ws.columns = [
-        { width: 6 }, { width: 16 }, { width: 14 }, { width: 22 }, { width: 16 },
+        { width: 22 }, { width: 16 }, { width: 14 }, { width: 22 }, { width: 16 },
         { width: 14 }, { width: 14 }, { width: 18 },
       ];
 
