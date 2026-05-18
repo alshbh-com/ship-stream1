@@ -429,12 +429,15 @@ export default function OfficeAccounts() {
         const com = c > 0 ? officeRate : 0;
         return s + Math.max(0, c - com);
       }, 0);
-      const returnsCount = filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length;
+      const returnStatusNames = ['مرتجع', 'رفض ولم يدفع شحن', 'رفض ودفع شحن', 'تهرب', 'ملغي', 'لم يرد', 'لايرد'];
+      const returnsCount = filteredOrders.filter(o => returnStatusNames.includes(statuses.find(s => s.id === o.status_id)?.name || '')).length;
+      const partialCount = filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'تسليم جزئي').length;
 
       ws.addRow([]);
       const summary: [string, any, boolean?][] = [
         ['عدد الأوردرات', filteredOrders.length],
-        ['عدد المرتجعات', returnsCount],
+        ['عدد المرتجعات (شامل الرفض)', returnsCount],
+        ['عدد التسليم الجزئي', partialCount],
         ['إجمالي السعر', totalPrice, true],
         ['إجمالي الشحن', totalShipping, true],
         ['إجمالي التحصيل (مع المندوب)', totalCollected, true],
@@ -682,7 +685,13 @@ export default function OfficeAccounts() {
               <div className="space-y-1">
                 <Label className="text-xs">عدد المرتجعات</Label>
                 <div className="w-32 h-10 px-3 flex items-center bg-secondary border border-border rounded-md text-sm font-bold text-blue-500">
-                  {filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length} أوردر
+                  {filteredOrders.filter(o => ['مرتجع','رفض ولم يدفع شحن','رفض ودفع شحن','تهرب','ملغي','لم يرد','لايرد'].includes(statuses.find(s => s.id === o.status_id)?.name || '')).length} أوردر
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">عدد التسليم الجزئي</Label>
+                <div className="w-32 h-10 px-3 flex items-center bg-secondary border border-border rounded-md text-sm font-bold text-amber-600">
+                  {filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'تسليم جزئي').length} أوردر
                 </div>
               </div>
             </div>
@@ -879,7 +888,7 @@ export default function OfficeAccounts() {
                     }, 0)} ج.م</TableCell>
                     <TableCell className="font-bold">{filteredOrders.reduce((s, o) => s + Number(o.delivery_price || 0), 0)} ج.م</TableCell>
                     <TableCell className="font-bold text-amber-500">{courierRate * filteredOrders.length} ج.م</TableCell>
-                    <TableCell className="font-bold text-blue-500 text-center">{filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length}</TableCell>
+                    <TableCell className="font-bold text-blue-500 text-center">{filteredOrders.filter(o => ['مرتجع','رفض ولم يدفع شحن','رفض ودفع شحن','تهرب','ملغي','لم يرد','لايرد'].includes(statuses.find(s => s.id === o.status_id)?.name || '')).length}</TableCell>
                     <TableCell className="font-bold text-primary">{filteredOrders.reduce((s, o) => s + getOrderOfficeDue(o), 0)} ج.م</TableCell>
                     <TableCell colSpan={4} />
                   </TableRow>
