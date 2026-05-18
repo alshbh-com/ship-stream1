@@ -378,8 +378,10 @@ export default function OfficeAccounts() {
         const isPartial = st?.name === 'تسليم جزئي';
         const displayPrice = isPartial ? Math.max(0, Number(o.partial_amount || 0) - Number(o.delivery_price || 0)) : Number(o.price || 0);
         const collected = getOrderCollected(o);
-        const commission = Number(o.delivery_price || 0); // عمولة الشركة = الشحن
-        const net = getOrderOfficeDue(o); // المستحق = التحصيل - العمولة (للمكتب)
+        // عمولة الشركة = اللي حضرتك بتحددها (لكل أوردر فيه تحصيل فقط)
+        const commission = collected > 0 ? officeRate : 0;
+        // المستحق = التحصيل - عمولة الشركة
+        const net = Math.max(0, collected - commission);
         const r = ws.addRow([
           i + 1,
           o.barcode || '-',
@@ -410,8 +412,12 @@ export default function OfficeAccounts() {
       }, 0);
       const totalShipping = filteredOrders.reduce((s, o) => s + Number(o.delivery_price || 0), 0);
       const totalCollected = filteredOrders.reduce((s, o) => s + getOrderCollected(o), 0);
-      const totalCommission = totalShipping;
-      const totalNet = filteredOrders.reduce((s, o) => s + getOrderOfficeDue(o), 0);
+      const totalCommission = filteredOrders.reduce((s, o) => s + (getOrderCollected(o) > 0 ? officeRate : 0), 0);
+      const totalNet = filteredOrders.reduce((s, o) => {
+        const c = getOrderCollected(o);
+        const com = c > 0 ? officeRate : 0;
+        return s + Math.max(0, c - com);
+      }, 0);
       const returnsCount = filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length;
 
       ws.addRow([]);
