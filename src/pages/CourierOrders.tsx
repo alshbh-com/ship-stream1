@@ -333,10 +333,14 @@ export default function CourierOrders() {
       amount,
     });
 
+    patchOrderLocally(shippingDialog.orderId, {
+      status_id: shippingDialog.statusId,
+      shipping_paid: amount,
+      partial_amount: 0,
+    });
     toast.success(`تم تسجيل مبلغ الشحن: ${amount} ج.م`);
     setShippingDialog(null);
     setShippingAmount('');
-    load();
   };
 
   const confirmPartialDelivery = async () => {
