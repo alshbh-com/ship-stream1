@@ -315,15 +315,17 @@ export default function OfficeAccounts() {
 
   const officeName = offices.find(o => o.id === selectedOffice)?.name || '';
 
-  // التحصيل = الفلوس اللي المندوب استلمها من العميل
+  // التحصيل = الفلوس اللي المندوب استلمها من العميل فعلاً
+  // أي مبلغ مسجل في partial_amount يُعتبر تحصيل (حتى لو 5 جنيه)
+  // وإلا نحسب حسب الحالة
   const getOrderCollected = (o: any) => {
+    const partial = Number(o.partial_amount || 0);
+    if (partial > 0) return partial;
     const status = statuses.find(s => s.id === o.status_id);
     const name = status?.name || '';
     const price = Number(o.price || 0);
     const ship = Number(o.delivery_price || 0);
-    const partial = Number(o.partial_amount || 0);
     if (name === 'تم التسليم') return price + ship;
-    if (name === 'تسليم جزئي') return partial;
     if (name === 'رفض ودفع شحن') return ship;
     return 0;
   };
