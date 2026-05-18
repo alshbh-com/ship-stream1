@@ -307,8 +307,8 @@ export default function CourierOrders() {
     await syncCollectionForOrder(orderId, 0);
     logActivity('مندوب غيّر حالة أوردر', { order_id: orderId, status_id: statusId });
 
+    patchOrderLocally(orderId, { status_id: statusId, shipping_paid: 0, partial_amount: 0 });
     toast.success('تم تحديث الحالة');
-    load();
   };
 
   const confirmShippingPaid = async () => {
