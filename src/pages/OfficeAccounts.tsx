@@ -329,6 +329,16 @@ export default function OfficeAccounts() {
     return 0;
   };
 
+  // الحسبة الحية المربوطة بـ "عمولة الشركة لكل أوردر" (نفس معادلة الإكسيل):
+  // المستحق الصافي للمكتب = إجمالي التحصيل − إجمالي عمولة الشركة
+  const liveTotalCollected = officeOrders.reduce((s, o) => s + getOrderCollected(o), 0);
+  const liveTotalCommission = officeOrders.reduce((s, o) => s + (getOrderCollected(o) > 0 ? officeRate : 0), 0);
+  const liveNetDue = liveTotalCollected - liveTotalCommission;
+  const livePostponedTotal = selectedAccount?.postponedTotal || 0;
+  const liveAdvancePaid = selectedAccount?.advancePaid || 0;
+  const liveSettlement = liveNetDue - liveAdvancePaid;
+  const liveSettlementWithPostponed = liveSettlement + livePostponedTotal;
+
   const exportToExcel = async () => {
     if (filteredOrders.length === 0) { toast.error('لا توجد بيانات للتصدير'); return; }
     try {
