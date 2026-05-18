@@ -92,14 +92,60 @@ export default function ExcelImport() {
         const data = new Uint8Array(ev.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const raw: Record<string, any>[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+        // قراءة كصفوف خام (array of arrays) عشان نقدر نشيل الأعمدة الفاضية
+        const aoa: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', blankrows: false }) as any[][];
+
+        if (!aoa.length) {
+          toast.error('الملف فارغ');
+          return;
+        }
+
+        const headerRow = (aoa[0] || []).map((h) => (h == null ? '' : String(h).trim()));
+        const dataRows = aoa.slice(1);
+
+        // تحديد الأعمدة اللي ليها هيدر أو فيها بيانات فعلية فقط (تجاهل الأعمدة الفاضية تماماً)
+        const keepIdx: number[] = [];
+        const maxLen = Math.max(headerRow.length, ...dataRows.map(r => r.length));
+        for (let c = 0; c < maxLen; c++) {
+          const hasHeader = headerRow[c] && headerRow[c].length > 0;
+          let hasData = false;
+          if (!hasHeader) {
+            for (const r of dataRows) {
+              const v = r[c];
+              if (v !== '' && v !== null && v !== undefined) { hasData = true; break; }
+            }
+          }
+          if (hasHeader || hasData) keepIdx.push(c);
+        }
+
+        // بناء أسماء الأعمدة + معالجة التكرار
+        const seen: Record<string, number> = {};
+        const cols: string[] = keepIdx.map((c, i) => {
+          let name = headerRow[c] || `عمود ${i + 1}`;
+          if (seen[name] != null) { seen[name]++; name = `${name} (${seen[name]})`; }
+          else seen[name] = 0;
+          return name;
+        });
+
+        // تحويل الصفوف لكائنات + تجاهل الصفوف الفاضية تماماً
+        const raw: Record<string, any>[] = [];
+        for (const r of dataRows) {
+          const obj: Record<string, any> = {};
+          let anyVal = false;
+          keepIdx.forEach((c, i) => {
+            const v = r[c];
+            obj[cols[i]] = v == null ? '' : v;
+            if (v !== '' && v !== null && v !== undefined) anyVal = true;
+          });
+          if (anyVal) raw.push(obj);
+        }
 
         if (raw.length === 0) {
           toast.error('الملف فارغ');
           return;
         }
 
-        const cols = Object.keys(raw[0]);
         setExcelColumns(cols);
         setRawData(raw);
 
