@@ -241,7 +241,33 @@ export default function CourierOrders() {
       .eq('is_courier_closed', false)
       .eq('is_closed', false)
       .order('created_at', { ascending: false });
-    setOrders(data || []);
+    const incoming = data || [];
+    // Preserve current on-screen ordering; only append truly new orders at the end.
+    // The list will be re-sorted only on manual refresh (full page reload).
+    setOrders(prev => {
+      if (!prev || prev.length === 0) return incoming;
+      const map = new Map(incoming.map((o: any) => [o.id, o]));
+      const ordered: any[] = [];
+      prev.forEach((p: any) => {
+        const fresh = map.get(p.id);
+        if (fresh) { ordered.push(fresh); map.delete(p.id); }
+      });
+      map.forEach((o: any) => ordered.push(o));
+      return ordered;
+    });
+  };
+
+  // Patch a single order locally without reloading (prevents live re-sort)
+  const patchOrderLocally = (orderId: string, patch: Record<string, any>) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id !== orderId) return o;
+      const next = { ...o, ...patch };
+      if (patch.status_id) {
+        const st = statuses.find(s => s.id === patch.status_id);
+        if (st) next.order_statuses = { name: st.name, color: st.color };
+      }
+      return next;
+    }));
   };
 
   const syncCollectionForOrder = async (orderId: string, amount: number) => {
