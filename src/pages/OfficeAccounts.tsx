@@ -695,13 +695,17 @@ export default function OfficeAccounts() {
           <Card className="bg-card border-border">
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground mb-1">المستحق</p>
-              <p className="text-2xl font-bold text-primary">{selectedAccount.settlement} ج.م</p>
+              <p className="text-2xl font-bold text-primary">{liveSettlement} ج.م</p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                التحصيل {liveTotalCollected} − العمولة {liveTotalCommission}
+                {liveAdvancePaid ? ` − المدفوع ${liveAdvancePaid}` : ''}
+              </p>
             </CardContent>
           </Card>
           <Card className="bg-card border-border">
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground mb-1">المستحق بالمؤجل</p>
-              <p className="text-2xl font-bold text-primary">{selectedAccount.settlementWithPostponed} ج.م</p>
+              <p className="text-2xl font-bold text-primary">{liveSettlementWithPostponed} ج.م</p>
             </CardContent>
           </Card>
         </div>
