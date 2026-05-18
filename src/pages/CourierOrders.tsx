@@ -241,7 +241,33 @@ export default function CourierOrders() {
       .eq('is_courier_closed', false)
       .eq('is_closed', false)
       .order('created_at', { ascending: false });
-    setOrders(data || []);
+    const incoming = data || [];
+    // Preserve current on-screen ordering; only append truly new orders at the end.
+    // The list will be re-sorted only on manual refresh (full page reload).
+    setOrders(prev => {
+      if (!prev || prev.length === 0) return incoming;
+      const map = new Map(incoming.map((o: any) => [o.id, o]));
+      const ordered: any[] = [];
+      prev.forEach((p: any) => {
+        const fresh = map.get(p.id);
+        if (fresh) { ordered.push(fresh); map.delete(p.id); }
+      });
+      map.forEach((o: any) => ordered.push(o));
+      return ordered;
+    });
+  };
+
+  // Patch a single order locally without reloading (prevents live re-sort)
+  const patchOrderLocally = (orderId: string, patch: Record<string, any>) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id !== orderId) return o;
+      const next = { ...o, ...patch };
+      if (patch.status_id) {
+        const st = statuses.find(s => s.id === patch.status_id);
+        if (st) next.order_statuses = { name: st.name, color: st.color };
+      }
+      return next;
+    }));
   };
 
   const syncCollectionForOrder = async (orderId: string, amount: number) => {
@@ -281,8 +307,8 @@ export default function CourierOrders() {
     await syncCollectionForOrder(orderId, 0);
     logActivity('مندوب غيّر حالة أوردر', { order_id: orderId, status_id: statusId });
 
+    patchOrderLocally(orderId, { status_id: statusId, shipping_paid: 0, partial_amount: 0 });
     toast.success('تم تحديث الحالة');
-    load();
   };
 
   const confirmShippingPaid = async () => {
@@ -307,10 +333,14 @@ export default function CourierOrders() {
       amount,
     });
 
+    patchOrderLocally(shippingDialog.orderId, {
+      status_id: shippingDialog.statusId,
+      shipping_paid: amount,
+      partial_amount: 0,
+    });
     toast.success(`تم تسجيل مبلغ الشحن: ${amount} ج.م`);
     setShippingDialog(null);
     setShippingAmount('');
-    load();
   };
 
   const confirmPartialDelivery = async () => {
@@ -342,9 +372,13 @@ export default function CourierOrders() {
       returned: orderPrice - received,
     });
 
+    patchOrderLocally(partialDialog.orderId, {
+      status_id: partialDialog.statusId,
+      partial_amount: received,
+      shipping_paid: 0,
+    });
     toast.success(`تم تسجيل التحصيل الجزئي: ${received} ج.م`);
     setPartialDialog(null);
-    load();
   };
 
   const openDetails = async (order: any) => {
@@ -491,16 +525,16 @@ export default function CourierOrders() {
         <Card className="bg-card border-border">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[900px]">
                 <TableHeader>
                   <TableRow className="border-border">
-                    <TableHead className="w-10">ترتيب</TableHead>
+                    <TableHead className="text-right sticky right-0 z-20 bg-card w-28 min-w-28">العميل</TableHead>
+                    <TableHead className="text-right sticky right-28 z-20 bg-card w-36 min-w-36">الحالة</TableHead>
+                    <TableHead className="text-right sticky right-64 z-20 bg-card w-24 min-w-24 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.15)]">الإجمالي</TableHead>
                     <TableHead className="text-right">الكود</TableHead>
-                    <TableHead className="text-right">العميل</TableHead>
                     <TableHead className="text-right">العنوان</TableHead>
                     <TableHead className="text-right">المنتج</TableHead>
-                    <TableHead className="text-right">الإجمالي</TableHead>
-                    <TableHead className="text-right">الحالة</TableHead>
+                    <TableHead className="w-10">ترتيب</TableHead>
                     <TableHead className="text-right">تفاصيل</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -519,28 +553,28 @@ export default function CourierOrders() {
                     <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">لا توجد أوردرات</TableCell></TableRow>
                   ) : filtered.map((order, idx) => (
                     <TableRow key={order.id} className="border-border">
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {idx > 0 && <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => moveOrder(idx, -1)}>↑</Button>}
-                          {idx < orders.length - 1 && <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => moveOrder(idx, 1)}>↓</Button>}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {order.customer_code || '-'}
-                        {order.priority === 'urgent' && <Badge variant="destructive" className="mr-1 text-xs">عاجل</Badge>}
-                        {order.priority === 'vip' && <Badge className="mr-1 text-xs bg-amber-500">VIP</Badge>}
-                      </TableCell>
-                      <TableCell className="text-sm">{order.customer_name}</TableCell>
-                      <TableCell className="text-sm truncate max-w-[120px]">{order.address || '-'}</TableCell>
-                      <TableCell className="text-sm">{order.product_name}</TableCell>
-                      <TableCell className="font-bold text-sm">{Number(order.price) + Number(order.delivery_price)} ج.م</TableCell>
-                      <TableCell>
+                      <TableCell className="text-sm sticky right-0 z-10 bg-card w-28 min-w-28 font-medium">{order.customer_name}</TableCell>
+                      <TableCell className="sticky right-28 z-10 bg-card w-36 min-w-36">
                         <Select value={order.status_id || ''} onValueChange={(v) => updateStatus(order.id, v)}>
                           <SelectTrigger className="w-32 sm:w-36 bg-secondary border-border text-xs"><SelectValue placeholder="الحالة" /></SelectTrigger>
                           <SelectContent>
                             {statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
+                      </TableCell>
+                      <TableCell className="font-bold text-sm sticky right-64 z-10 bg-card w-24 min-w-24 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.15)]">{Number(order.price) + Number(order.delivery_price)} ج.م</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {order.customer_code || '-'}
+                        {order.priority === 'urgent' && <Badge variant="destructive" className="mr-1 text-xs">عاجل</Badge>}
+                        {order.priority === 'vip' && <Badge className="mr-1 text-xs bg-amber-500">VIP</Badge>}
+                      </TableCell>
+                      <TableCell className="text-sm truncate max-w-[120px]">{order.address || '-'}</TableCell>
+                      <TableCell className="text-sm">{order.product_name}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {idx > 0 && <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => moveOrder(idx, -1)}>↑</Button>}
+                          {idx < orders.length - 1 && <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => moveOrder(idx, 1)}>↓</Button>}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Button size="icon" variant="ghost" onClick={() => openDetails(order)}><Eye className="h-4 w-4" /></Button>
