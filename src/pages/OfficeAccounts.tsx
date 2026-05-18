@@ -329,6 +329,16 @@ export default function OfficeAccounts() {
     return 0;
   };
 
+  // الحسبة الحية المربوطة بـ "عمولة الشركة لكل أوردر" (نفس معادلة الإكسيل):
+  // المستحق الصافي للمكتب = إجمالي التحصيل − إجمالي عمولة الشركة
+  const liveTotalCollected = officeOrders.reduce((s, o) => s + getOrderCollected(o), 0);
+  const liveTotalCommission = officeOrders.reduce((s, o) => s + (getOrderCollected(o) > 0 ? officeRate : 0), 0);
+  const liveNetDue = liveTotalCollected - liveTotalCommission;
+  const livePostponedTotal = selectedAccount?.postponedTotal || 0;
+  const liveAdvancePaid = selectedAccount?.advancePaid || 0;
+  const liveSettlement = liveNetDue - liveAdvancePaid;
+  const liveSettlementWithPostponed = liveSettlement + livePostponedTotal;
+
   const exportToExcel = async () => {
     if (filteredOrders.length === 0) { toast.error('لا توجد بيانات للتصدير'); return; }
     try {
@@ -685,13 +695,17 @@ export default function OfficeAccounts() {
           <Card className="bg-card border-border">
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground mb-1">المستحق</p>
-              <p className="text-2xl font-bold text-primary">{selectedAccount.settlement} ج.م</p>
+              <p className="text-2xl font-bold text-primary">{liveSettlement} ج.م</p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                التحصيل {liveTotalCollected} − العمولة {liveTotalCommission}
+                {liveAdvancePaid ? ` − المدفوع ${liveAdvancePaid}` : ''}
+              </p>
             </CardContent>
           </Card>
           <Card className="bg-card border-border">
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground mb-1">المستحق بالمؤجل</p>
-              <p className="text-2xl font-bold text-primary">{selectedAccount.settlementWithPostponed} ج.م</p>
+              <p className="text-2xl font-bold text-primary">{liveSettlementWithPostponed} ج.م</p>
             </CardContent>
           </Card>
         </div>
@@ -776,8 +790,8 @@ export default function OfficeAccounts() {
                     <TableCell className="text-sm hidden sm:table-cell">{a.shippingDiscount} ج.م</TableCell>
                     <TableCell className="font-bold text-sm">{a.advancePaid} ج.م</TableCell>
                     <TableCell className="text-sm font-bold">{a.commission} ج.م</TableCell>
-                    <TableCell className="font-bold text-sm">{a.settlement} ج.م</TableCell>
-                    <TableCell className="font-bold text-sm">{a.settlementWithPostponed} ج.م</TableCell>
+                    <TableCell className="font-bold text-sm">{selectedOffice !== 'all' && a.id === selectedOffice ? liveSettlement : a.settlement} ج.م</TableCell>
+                    <TableCell className="font-bold text-sm">{selectedOffice !== 'all' && a.id === selectedOffice ? liveSettlementWithPostponed : a.settlementWithPostponed} ج.م</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
