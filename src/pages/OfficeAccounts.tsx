@@ -685,7 +685,13 @@ export default function OfficeAccounts() {
               <div className="space-y-1">
                 <Label className="text-xs">عدد المرتجعات</Label>
                 <div className="w-32 h-10 px-3 flex items-center bg-secondary border border-border rounded-md text-sm font-bold text-blue-500">
-                  {filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length} أوردر
+                  {filteredOrders.filter(o => ['مرتجع','رفض ولم يدفع شحن','رفض ودفع شحن','تهرب','ملغي','لم يرد','لايرد'].includes(statuses.find(s => s.id === o.status_id)?.name || '')).length} أوردر
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">عدد التسليم الجزئي</Label>
+                <div className="w-32 h-10 px-3 flex items-center bg-secondary border border-border rounded-md text-sm font-bold text-amber-600">
+                  {filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'تسليم جزئي').length} أوردر
                 </div>
               </div>
             </div>
