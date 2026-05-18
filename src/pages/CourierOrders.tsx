@@ -372,9 +372,13 @@ export default function CourierOrders() {
       returned: orderPrice - received,
     });
 
+    patchOrderLocally(partialDialog.orderId, {
+      status_id: partialDialog.statusId,
+      partial_amount: received,
+      shipping_paid: 0,
+    });
     toast.success(`تم تسجيل التحصيل الجزئي: ${received} ج.م`);
     setPartialDialog(null);
-    load();
   };
 
   const openDetails = async (order: any) => {
