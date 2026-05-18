@@ -70,7 +70,7 @@ export default function OfficeAccounts() {
   const loadOfficeOrders = async () => {
     const { data } = await supabase
       .from('orders')
-      .select('id, barcode, status_id, partial_amount, price, delivery_price, is_settled, customer_code, customer_name, customer_phone, courier_id, office_id, created_at')
+      .select('id, barcode, status_id, partial_amount, shipping_paid, price, delivery_price, is_settled, customer_code, customer_name, customer_phone, courier_id, office_id, created_at')
       .eq('office_id', selectedOffice)
       .eq('is_closed', false)
       .order('created_at', { ascending: false });
@@ -316,17 +316,16 @@ export default function OfficeAccounts() {
   const officeName = offices.find(o => o.id === selectedOffice)?.name || '';
 
   // التحصيل = الفلوس اللي المندوب استلمها من العميل فعلاً
-  // أي مبلغ مسجل في partial_amount يُعتبر تحصيل (حتى لو 5 جنيه)
-  // وإلا نحسب حسب الحالة
   const getOrderCollected = (o: any) => {
-    const partial = Number(o.partial_amount || 0);
-    if (partial > 0) return partial;
     const status = statuses.find(s => s.id === o.status_id);
     const name = status?.name || '';
     const price = Number(o.price || 0);
     const ship = Number(o.delivery_price || 0);
+    const partial = Number(o.partial_amount || 0);
+    const shipPaid = Number(o.shipping_paid || 0);
+    if (name === 'رفض ودفع شحن' || name === 'استلم ودفع نص الشحن') return shipPaid;
+    if (partial > 0) return partial;
     if (name === 'تم التسليم') return price + ship;
-    if (name === 'رفض ودفع شحن') return ship;
     return 0;
   };
 
