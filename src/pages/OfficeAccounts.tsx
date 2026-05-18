@@ -429,12 +429,15 @@ export default function OfficeAccounts() {
         const com = c > 0 ? officeRate : 0;
         return s + Math.max(0, c - com);
       }, 0);
-      const returnsCount = filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length;
+      const returnStatusNames = ['مرتجع', 'رفض ولم يدفع شحن', 'رفض ودفع شحن', 'تهرب', 'ملغي', 'لم يرد', 'لايرد'];
+      const returnsCount = filteredOrders.filter(o => returnStatusNames.includes(statuses.find(s => s.id === o.status_id)?.name || '')).length;
+      const partialCount = filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'تسليم جزئي').length;
 
       ws.addRow([]);
       const summary: [string, any, boolean?][] = [
         ['عدد الأوردرات', filteredOrders.length],
-        ['عدد المرتجعات', returnsCount],
+        ['عدد المرتجعات (شامل الرفض)', returnsCount],
+        ['عدد التسليم الجزئي', partialCount],
         ['إجمالي السعر', totalPrice, true],
         ['إجمالي الشحن', totalShipping, true],
         ['إجمالي التحصيل (مع المندوب)', totalCollected, true],
