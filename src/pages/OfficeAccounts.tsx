@@ -653,6 +653,16 @@ export default function OfficeAccounts() {
                 />
               </div>
               <div className="space-y-1">
+                <Label className="text-xs">عمولة الشركة (لكل أوردر)</Label>
+                <Input
+                  type="number"
+                  value={officeCommissionRate}
+                  onChange={e => setOfficeCommissionRate(e.target.value)}
+                  className="w-32 bg-secondary border-border"
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-1">
                 <Label className="text-xs">عدد المرتجعات</Label>
                 <div className="w-32 h-10 px-3 flex items-center bg-secondary border border-border rounded-md text-sm font-bold text-blue-500">
                   {filteredOrders.filter(o => statuses.find(s => s.id === o.status_id)?.name === 'مرتجع').length} أوردر
