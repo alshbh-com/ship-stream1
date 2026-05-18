@@ -790,8 +790,8 @@ export default function OfficeAccounts() {
                     <TableCell className="text-sm hidden sm:table-cell">{a.shippingDiscount} ج.م</TableCell>
                     <TableCell className="font-bold text-sm">{a.advancePaid} ج.م</TableCell>
                     <TableCell className="text-sm font-bold">{a.commission} ج.م</TableCell>
-                    <TableCell className="font-bold text-sm">{a.settlement} ج.م</TableCell>
-                    <TableCell className="font-bold text-sm">{a.settlementWithPostponed} ج.م</TableCell>
+                    <TableCell className="font-bold text-sm">{selectedOffice !== 'all' && a.id === selectedOffice ? liveSettlement : a.settlement} ج.م</TableCell>
+                    <TableCell className="font-bold text-sm">{selectedOffice !== 'all' && a.id === selectedOffice ? liveSettlementWithPostponed : a.settlementWithPostponed} ج.م</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
