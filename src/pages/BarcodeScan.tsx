@@ -101,10 +101,14 @@ export default function BarcodeScan() {
     }
     const { data: orders } = await supabase
       .from('orders')
-      .select('*, offices(name), order_statuses(name,color), profiles!orders_courier_id_fkey(full_name)')
+      .select('*, offices(name), order_statuses(name,color)')
       .or(`barcode.eq.${value},tracking_id.eq.${value}`)
       .limit(1);
-    const order = orders?.[0];
+    const order: any = orders?.[0];
+    if (order?.courier_id) {
+      const { data: prof } = await supabase.from('profiles').select('full_name').eq('id', order.courier_id).maybeSingle();
+      order.profiles = prof;
+    }
     if (!order) {
       playBeep(false); toast.error(`لم يتم العثور على الأوردر: ${value}`); logScan(value, null, false, 'not_found'); return;
     }
