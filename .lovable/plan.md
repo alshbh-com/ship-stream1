@@ -1,40 +1,66 @@
+## نظام قراءة الباركود (Barcode Scanning System)
 
+طلبك كبير ويغطي عدة أنظمة. سأبنيه على مراحل واضحة. الأوردرات الحالية لديها بالفعل عمود `barcode` (تسلسل رقمي صارم حسب memory)، وعمود `tracking_id`. سنبني فوق ذلك.
 
-## المشكلة
+### المرحلة 1 — قاعدة البيانات (Supabase Migration)
 
-عند تقفيل أوردرات المندوب (من صفحة المناديب أو تحصيلات المناديب)، يتم تعيين `is_closed = true` على الأوردر. هذا يجعل الأوردر يختفي من **حسابات المكاتب** لأن الصفحة تفلتر فقط الأوردرات اللي `is_closed = false`.
+جداول جديدة:
+- `scan_sessions`: من بدأ الجلسة، وقت البداية/النهاية، عدد الأوردرات، الحالة (active/completed).
+- `scan_session_items`: ربط الجلسة بالأوردرات (session_id, order_id, scanned_at).
+- `scan_logs`: سجل كل عملية سكان (user_id, barcode, order_id, action, success, error_reason).
+- `order_status_history`: تاريخ تغيير حالة كل أوردر (order_id, old_status, new_status, changed_by, changed_at, source).
 
-النتيجة: الأوردرات المقفلة بتروح للأوردرات القديمة بدل ما تظهر في حسابات المكاتب، فالمستخدم مش بيقدر يحسب مع المكتب.
+لن نضيف `tracking_code` / `qr_value` جديدة — سنستخدم `barcode` و `tracking_id` الموجودين. الـ QR يُولَّد من قيمة `barcode` نفسها (لا حاجة لتخزينه).
 
-## الحل
+RLS: مفتوحة للـ authenticated مثل باقي الجداول، مع التحقق من الدور في التطبيق.
 
-فصل مفهوم "تقفيل المندوب" عن "تقفيل المكتب" بإضافة عمود جديد `is_courier_closed` للأوردرات.
+### المرحلة 2 — صفحة "قراءة الباركود" `/barcode-scan`
 
-### التغييرات المطلوبة
+- زر كبير "ابدأ الاسكان" → ينشئ `scan_session` جديدة ويفتح Input مركّز تلقائياً (يُعاد التركيز بعد كل سكان).
+- Input ضخم RTL يستقبل من المسدس (كأنه Keyboard، Enter = إرسال).
+- صوت نجاح/خطأ (Web Audio API، بدون أصول خارجية).
+- جدول Live بالأوردرات الممسوحة: رقم/باركود، اسم العميل، المندوب، الحالة، المبلغ، المدينة، زر حذف من القائمة.
+- Counter حي + Toast لكل عملية.
+- منع التكرار، منع الملغية/المسلمة مسبقاً، التحقق من وجود الأوردر.
+- زر "انتهيت" → يفتح Dialog الـ Bulk Actions.
 
-**1. Migration: إضافة عمود `is_courier_closed`**
-- إضافة عمود `is_courier_closed boolean default false` لجدول `orders`
-- تحديث الأوردرات الحالية المقفلة اللي ليها `courier_id` بحيث `is_courier_closed = true`
+### المرحلة 3 — Bulk Actions Dialog
 
-**2. تعديل عمليات تقفيل المندوب**
-- في `Couriers.tsx` و `CourierCollections.tsx`: تغيير التقفيل ليعمل `is_courier_closed = true` بدلاً من `is_closed = true`
-- الأوردر يختفي من المندوب لكن يفضل ظاهر في حسابات المكاتب
+- تغيير الحالة (Select من `order_statuses` الموجودة + الحالات المطلوبة).
+- تعيين/إزالة مندوب.
+- إقفال الأوردرات (`is_closed = true`).
+- طباعة فواتير/ملصقات جماعية (يفتح صفحة طباعة بكل الأوردرات).
+- تصدير Excel (exceljs الموجود) و PDF (jspdf).
+- حذف من القائمة الحالية (إزالة من السيشن فقط).
 
-**3. تعديل صفحة حسابات المكاتب (`OfficeAccounts.tsx`)**
-- تغيير الفلتر من `is_closed = false` إلى عرض الأوردرات اللي `is_closed = false` (بغض النظر عن `is_courier_closed`)
-- كده الأوردرات المقفلة من المندوب هتظهر في حسابات المكاتب
+كل تغيير حالة:
+1. يحدّث `orders.status_id`.
+2. يُسجَّل في `order_status_history`.
+3. يُسجَّل في `scan_logs`.
+4. يُنهي السيشن بعد التطبيق.
 
-**4. تعديل صفحة أوردرات المندوب**
-- إخفاء الأوردرات اللي `is_courier_closed = true` من عند المندوب
+### المرحلة 4 — Realtime
 
-**5. تعديل صفحة الأوردرات القديمة**
-- الأوردرات القديمة تبقى فقط اللي `is_closed = true` (التقفيل النهائي بعد حساب المكتب)
+اشتراك على `orders` و `scan_sessions` عبر Supabase Realtime channel — أي تحديث يظهر فوراً في صفحة السكان وقوائم الأوردرات المفتوحة.
 
-### الملفات المتأثرة
-- Migration SQL جديد
-- `src/pages/Couriers.tsx` — تقفيل المندوب يستخدم `is_courier_closed`
-- `src/pages/CourierCollections.tsx` — نفس التعديل
-- `src/pages/OfficeAccounts.tsx` — الفلتر يبقى كما هو (is_closed = false) فالأوردرات المقفلة من المندوب هتظهر
-- `src/pages/Orders.tsx` — التقفيل الرئيسي يبقى `is_closed = true` (تقفيل نهائي)
-- `src/pages/CourierOrders.tsx` — إخفاء الأوردرات اللي `is_courier_closed = true`
+### المرحلة 5 — Barcode/QR في الأوردر والفاتورة
 
+- في صفحة تفاصيل الأوردر: عرض Barcode + QR (jsbarcode + qrcode.react).
+- في الملصق (PrintSticker الموجود) و فاتورة الطباعة: إضافة QR إلى جانب الباركود الحالي.
+- زر "طباعة باركود" في صفحة الأوردرات.
+
+### المكتبات المضافة
+
+`jsbarcode`, `qrcode`, `react-qr-code`.
+
+### الراوت والقائمة
+
+إضافة `/barcode-scan` في `App.tsx` وفي `AppSidebar` تحت قسم العمليات.
+
+### ملاحظات
+
+- العمود `barcode` يبقى التسلسل الرقمي الصارم (1, 2, 3...) حسب ذاكرة المشروع — لن نغيّره.
+- الـ QR يُولَّد من `barcode` فقط؛ المسح يبحث عن `barcode = scanned_value` أو `tracking_id = scanned_value`.
+- لو وُجدت `partial_amount` أو `shipping_paid` ستُحفظ كما هي عند التغيير الجماعي للحالة.
+
+هل أبدأ التنفيذ بهذا المخطط؟

@@ -626,6 +626,36 @@ export type Database = {
           },
         ]
       }
+      order_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_status_id: string | null
+          old_status_id: string | null
+          order_id: string
+          source: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_status_id?: string | null
+          old_status_id?: string | null
+          order_id: string
+          source?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_status_id?: string | null
+          old_status_id?: string | null
+          order_id?: string
+          source?: string | null
+        }
+        Relationships: []
+      }
       order_statuses: {
         Row: {
           color: string | null
@@ -839,6 +869,107 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scan_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          error_reason: string | null
+          id: string
+          order_id: string | null
+          scanned_value: string
+          session_id: string | null
+          success: boolean
+          user_id: string | null
+        }
+        Insert: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          error_reason?: string | null
+          id?: string
+          order_id?: string | null
+          scanned_value: string
+          session_id?: string | null
+          success?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          error_reason?: string | null
+          id?: string
+          order_id?: string | null
+          scanned_value?: string
+          session_id?: string | null
+          success?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      scan_session_items: {
+        Row: {
+          id: string
+          order_id: string
+          scanned_at: string
+          session_id: string
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          scanned_at?: string
+          session_id: string
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          scanned_at?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_session_items_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "scan_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scan_sessions: {
+        Row: {
+          actions_summary: Json | null
+          created_at: string
+          ended_at: string | null
+          id: string
+          items_count: number
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          actions_summary?: Json | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          items_count?: number
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          actions_summary?: Json | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          items_count?: number
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_permissions: {
         Row: {
