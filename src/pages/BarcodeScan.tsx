@@ -12,11 +12,21 @@ import { ScanLine, Play, CheckCircle2, Trash2, Printer, FileSpreadsheet, FileTex
 import { toast } from 'sonner';
 import { logActivity } from '@/lib/activityLogger';
 import ExcelJS from 'exceljs';
+import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
 const saveAs = (blob: Blob, name: string) => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = name; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
+
+function barcodeDataUrl(value: string): string {
+  try {
+    const canvas = document.createElement('canvas');
+    JsBarcode(canvas, value || '0', { format: 'CODE128', displayValue: true, height: 50, margin: 0 });
+    return canvas.toDataURL('image/png');
+  } catch { return ''; }
+}
 
 type OrderRow = any;
 
