@@ -201,16 +201,18 @@ export default function BarcodeScan() {
     saveAs(new Blob([buf]), `scan-session-${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
-  const printInvoices = () => {
+  const printInvoices = async () => {
     const w = window.open('', '_blank', 'width=900,height=1100');
     if (!w) return;
-    const html = scanned.map((o, i) => {
+    const pages = await Promise.all(scanned.map(async (o, i) => {
       const total = Number(o.price) + Number(o.delivery_price);
+      const bc = barcodeDataUrl(o.barcode || '0');
+      const qr = await QRCode.toDataURL(o.barcode || o.id, { width: 120, margin: 0 });
       return `<div class="page">
         <div class="h">Star Logistics</div>
         <div class="d">${new Date().toLocaleDateString('ar-EG')} — فاتورة ${i + 1}/${scanned.length}</div>
+        <div class="codes"><img src="${bc}" /><img src="${qr}" /></div>
         <table>
-          <tr><th>الباركود</th><td style="font-family:monospace;direction:ltr">${o.barcode || '-'}</td></tr>
           <tr><th>العميل</th><td>${o.customer_name}</td></tr>
           <tr><th>الهاتف</th><td dir="ltr">${o.customer_phone}</td></tr>
           <tr><th>المكتب</th><td>${o.offices?.name || '-'}</td></tr>
@@ -219,15 +221,17 @@ export default function BarcodeScan() {
         </table>
         <div class="t">الإجمالي: ${total} ج.م</div>
       </div>`;
-    }).join('');
+    }));
     w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>
       @page{size:A4;margin:15mm}body{font-family:'Cairo',Arial;margin:0}
       .page{page-break-after:always;padding:8mm 0}.page:last-child{page-break-after:auto}
       .h{text-align:center;font-size:24px;font-weight:bold}.d{text-align:center;color:#666;margin-bottom:14px}
+      .codes{display:flex;justify-content:space-around;align-items:center;margin-bottom:12px;gap:14px}
+      .codes img{max-height:90px}
       table{width:100%;border-collapse:collapse}th,td{border:1px solid #333;padding:8px;text-align:right}
       th{background:#f3f3f3;width:30%}.t{font-size:20px;font-weight:bold;text-align:center;border:2px solid #000;padding:10px;margin-top:10px}
-    </style></head><body>${html}</body></html>`);
-    w.document.close(); w.focus(); w.print();
+    </style></head><body>${pages.join('')}</body></html>`);
+    w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
   };
 
   const endSession = async () => {
