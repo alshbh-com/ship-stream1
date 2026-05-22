@@ -7,6 +7,16 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, StickyNote, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
+
+function barcodeDataUrl(value: string): string {
+  try {
+    const canvas = document.createElement('canvas');
+    JsBarcode(canvas, value || '0', { format: 'CODE128', displayValue: true, height: 50, margin: 0 });
+    return canvas.toDataURL('image/png');
+  } catch { return ''; }
+}
 
 export default function PrintSticker() {
   const [search, setSearch] = useState('');
@@ -97,21 +107,23 @@ export default function PrintSticker() {
     printWindow.print();
   };
 
-  const printInvoice = () => {
+  const printInvoice = async () => {
     if (selectedOrders.length === 0) { toast.error('اختر أوردرات للطباعة'); return; }
     const printWindow = window.open('', '_blank', 'width=800,height=1000');
     if (!printWindow) return;
 
-    const invoicesHtml = selectedOrders.map((order, i) => {
+    const pages = await Promise.all(selectedOrders.map(async (order, i) => {
       const total = Number(order.price) + Number(order.delivery_price);
       const barcode = order.barcode || '';
+      const bc = barcodeDataUrl(barcode || '0');
+      const qr = await QRCode.toDataURL(barcode || order.id, { width: 130, margin: 0 });
       return `
         <div class="invoice-page">
           <div class="header">Star Logistics</div>
           <div class="date">${new Date().toLocaleDateString('ar-EG')} - فاتورة ${i + 1} من ${selectedOrders.length}</div>
+          <div class="codes"><img src="${bc}" /><img src="${qr}" /></div>
           <table>
             <tr><th>الكود</th><td>${order.customer_code || '-'}</td></tr>
-            <tr><th>الباركود</th><td style="font-family:monospace;direction:ltr">${barcode}</td></tr>
             <tr><th>اسم العميل</th><td>${order.customer_name}</td></tr>
             <tr><th>الهاتف</th><td dir="ltr">${order.customer_phone}</td></tr>
             <tr><th>المكتب</th><td>${order.offices?.name || '-'}</td></tr>
@@ -123,7 +135,7 @@ export default function PrintSticker() {
           </table>
           <div class="total">الإجمالي: ${total} ج.م</div>
         </div>`;
-    }).join('');
+    }));
 
     printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">
       <style>
@@ -132,15 +144,17 @@ export default function PrintSticker() {
         .invoice-page { page-break-after: always; padding: 10mm 0; }
         .invoice-page:last-child { page-break-after: auto; }
         .header { text-align: center; font-size: 28px; font-weight: bold; margin-bottom: 10px; }
-        .date { text-align: center; margin-bottom: 20px; color: #666; font-size: 13px; }
+        .date { text-align: center; margin-bottom: 14px; color: #666; font-size: 13px; }
+        .codes { display: flex; justify-content: space-around; align-items: center; margin: 10px 0 18px; gap: 16px; }
+        .codes img { max-height: 100px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         th, td { border: 1px solid #333; padding: 10px 14px; text-align: right; font-size: 14px; }
         th { background: #f0f0f0; font-weight: bold; width: 30%; }
         .total { font-size: 22px; font-weight: bold; text-align: center; border: 3px solid #000; padding: 12px; }
-      </style></head><body>${invoicesHtml}</body></html>`);
+      </style></head><body>${pages.join('')}</body></html>`);
     printWindow.document.close();
     printWindow.focus();
-    printWindow.print();
+    setTimeout(() => printWindow.print(), 300);
   };
 
   return (
