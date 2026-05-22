@@ -12,7 +12,11 @@ import { ScanLine, Play, CheckCircle2, Trash2, Printer, FileSpreadsheet, FileTex
 import { toast } from 'sonner';
 import { logActivity } from '@/lib/activityLogger';
 import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
+const saveAs = (blob: Blob, name: string) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 
 type OrderRow = any;
 
